@@ -2865,9 +2865,12 @@ document.getElementById('f-good').addEventListener('change', e=>{ state.tomaBuen
 
 /* ---- generacion del payload del QR ---- */
 function buildPayload(goodVal){
+  const now = new Date();
+  const pad2 = (n)=> (n<10?'0':'') + n;
+  const tc = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
   return {
     v:1,
-    pr:state.pr, dt:new Date().toISOString().slice(0,10),
+    pr:state.pr, dt:now.toISOString().slice(0,10), tc:tc,
     dir:state.dir, dp:state.dp,
     sc:state.sc, sh:state.sh, tk:state.tk,
     cam:state.cam, card:state.card,
