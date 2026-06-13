@@ -289,7 +289,6 @@
 
     <!-- Flags -->
     <div class="card">
-      <label class="check-row"><input type="checkbox" id="f-tail"> <span data-i18n="tail">Claqueta de cola (tail slate)</span></label>
       <label class="check-row good"><input type="checkbox" id="f-good"> <span data-i18n="good">Toma buena</span></label>
     </div>
 
@@ -2649,7 +2648,7 @@ const DEFAULT_STATE = {
   sc:1, sh:1, tk:1,
   int:'INT', dn:'DIA',
   fps:25, mm:35, sht:50, iso:800, ap:2.8, wb:5600, wbCustom:false,
-  tail:false, tomaBuena:false, pendingAdvance:false,
+  tomaBuena:false, pendingAdvance:false,
   pendingGood:'',
   view:'edit', sub:'qr', lang:'es',
   lastPayload:null,
@@ -2699,10 +2698,10 @@ const I18N = {
     lente:'Lente (mm)', obturador:'Obturador 1/x', diafragma:'Diafragma f/', wb:'Balance de blancos (K)',
     proyecto_section:'Datos de proyecto', proyecto:'Proyecto', director:'Director/a',
     dp:'Dirección de fotografía', camara:'Cámara', tarjeta:'Tarjeta',
-    tail:'Claqueta de cola (tail slate)', good:'Toma buena', publicar:'PUBLICAR',
+    good:'Toma buena', publicar:'PUBLICAR',
     proyecto_ph:'Título del proyecto', nombre_ph:'Nombre', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
-    b_diaf:'DIAF', b_wb:'WB', b_tail:'TAIL', b_dir:'DIR', b_dp:'DP', b_pr:'PR',
+    b_diaf:'DIAF', b_wb:'WB', b_dir:'DIR', b_dp:'DP', b_pr:'PR',
     toast_no_log:'No hay tomas registradas todavía',
   },
   en: {
@@ -2713,10 +2712,10 @@ const I18N = {
     lente:'Lens (mm)', obturador:'Shutter 1/x', diafragma:'Aperture f/', wb:'White balance (K)',
     proyecto_section:'Project info', proyecto:'Project', director:'Director',
     dp:'Director of photography', camara:'Camera', tarjeta:'Card',
-    tail:'Tail slate', good:'Good take', publicar:'PUBLISH',
+    good:'Good take', publicar:'PUBLISH',
     proyecto_ph:'Project title', nombre_ph:'Name', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
-    b_diaf:'APER', b_wb:'WB', b_tail:'TAIL', b_dir:'DIR', b_dp:'DP', b_pr:'PROJ',
+    b_diaf:'APER', b_wb:'WB', b_dir:'DIR', b_dp:'DP', b_pr:'PROJ',
     toast_no_log:'No takes recorded yet',
   },
   eu: {
@@ -2727,10 +2726,10 @@ const I18N = {
     lente:'Lentea (mm)', obturador:'Obturadorea 1/x', diafragma:'Diafragma f/', wb:'Zuri balantzea (K)',
     proyecto_section:'Proiektuaren datuak', proyecto:'Proiektua', director:'Zuzendaria',
     dp:'Argazki zuzendaritza', camara:'Kamera', tarjeta:'Txartela',
-    tail:'Buztan klaketa', good:'Hartualdi ona', publicar:'ARGITARATU',
+    good:'Hartualdi ona', publicar:'ARGITARATU',
     proyecto_ph:'Proiektuaren izenburua', nombre_ph:'Izena', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
-    b_diaf:'DIAF', b_wb:'ZB', b_tail:'BUZTAN', b_dir:'ZUZ', b_dp:'AZ', b_pr:'PROI',
+    b_diaf:'DIAF', b_wb:'ZB', b_dir:'ZUZ', b_dp:'AZ', b_pr:'PROI',
     toast_no_log:'Oraindik ez dago hartualdirik erregistratuta',
   },
 };
@@ -2794,7 +2793,6 @@ function renderEdit(){
   document.getElementById('f-cam').value = state.cam;
   document.getElementById('f-card').value = state.card;
 
-  document.getElementById('f-tail').checked = state.tail;
   document.getElementById('f-good').checked = state.tomaBuena;
 }
 
@@ -2860,7 +2858,6 @@ document.querySelectorAll('.collapsible').forEach(h=>{
   });
 });
 
-document.getElementById('f-tail').addEventListener('change', e=>{ state.tail = e.target.checked; saveState(); });
 document.getElementById('f-good').addEventListener('change', e=>{ state.tomaBuena = e.target.checked; saveState(); });
 
 /* ---- generacion del payload del QR ---- */
@@ -2876,7 +2873,7 @@ function buildPayload(goodVal){
     cam:state.cam, card:state.card,
     int:state.int, dn:state.dn,
     fps:state.fps, mm:state.mm, sht:state.sht, iso:state.iso, ap:state.ap, wb:state.wb,
-    tail:state.tail, good:goodVal
+    good:goodVal
   };
 }
 
@@ -2958,7 +2955,6 @@ function renderDataView(payload){
     [t('b_diaf'), `f/${formatAp(payload.ap)}`],
     [t('b_wb'), `${payload.wb}K`],
   ].forEach(([l,v]) => top.appendChild(makeBadge(l,v)));
-  if(payload.tail) top.appendChild(makeBadge(t('b_tail'),'SÍ'));
 
   const bottom = document.getElementById('badges-bottom');
   bottom.innerHTML = '';
@@ -2995,7 +2991,7 @@ function confirmRoll(){
     sc: state.sc, sh: state.sh, tk: state.tk,
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
-    tail: state.tail, toma_buena: state.tomaBuena, good_enviado: goodToUse
+    toma_buena: state.tomaBuena, good_enviado: goodToUse
   });
 
   state.pendingGood = state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : '';
@@ -3012,7 +3008,6 @@ window.confirmRoll = confirmRoll;
 document.getElementById('btn-edit-icon').addEventListener('click', ()=>{
   if(state.pendingAdvance){
     state.tomaBuena = false;
-    state.tail = false;
     state.tk += 1;
     state.pendingAdvance = false;
     saveState();
@@ -3146,7 +3141,7 @@ function playClap(){
 
 /* ---- exportar log de sesion (CSV via Web Share API, con fallback de descarga) ---- */
 function buildCSV(){
-  const cols = ['ts','sc','sh','tk','cam','card','int','dn','tail','toma_buena','good_enviado'];
+  const cols = ['ts','sc','sh','tk','cam','card','int','dn','toma_buena','good_enviado'];
   const lines = [cols.join(',')];
   state.log.forEach(row=>{
     lines.push(cols.map(c=>{
