@@ -3061,27 +3061,34 @@ function runCountdown(){
   const cdOverlay = document.getElementById('countdown-overlay');
   const cdNumber = document.getElementById('countdown-number');
   const flashOverlay = document.getElementById('flash-overlay');
-  const sequence = [3,2,1];
+  const sequence = [3, 2, 1];
   let i = 0;
 
   cdOverlay.classList.add('show');
-  cdNumber.textContent = sequence[i];
+  cdNumber.textContent = sequence[0];
 
-  const step = ()=>{
-    i++;
-    if(i < sequence.length){
-      cdNumber.textContent = sequence[i];
-      setTimeout(step, 700);
+  var startTime = performance.now();
+
+  function tick(){
+    var elapsed = performance.now() - startTime;
+    var step = Math.floor(elapsed / 1000);
+
+    if(step < sequence.length){
+      var num = sequence[step];
+      if(cdNumber.textContent !== String(num)){
+        cdNumber.textContent = num;
+      }
+      requestAnimationFrame(tick);
     } else {
-      setTimeout(()=>{
-        cdOverlay.classList.remove('show');
-        flashOverlay.classList.add('show');
-        playClap();
-        setTimeout(()=> flashOverlay.classList.remove('show'), 1000);
-      }, 700);
+      // exactamente a los 3 segundos: flash
+      cdOverlay.classList.remove('show');
+      flashOverlay.classList.add('show');
+      playClap();
+      setTimeout(function(){ flashOverlay.classList.remove('show'); }, 1000);
     }
-  };
-  setTimeout(step, 700);
+  }
+
+  requestAnimationFrame(tick);
 }
 
 /* ---- sonido "clap" sintetizado (Web Audio API) ---- */
