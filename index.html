@@ -147,7 +147,8 @@
   .overlay.show{ opacity:1; }
   #countdown-overlay{ background:var(--bg); }
   #countdown-overlay span{ font-family:var(--mono); font-weight:700; font-size:42vh; color:var(--fg); }
-  #flash-overlay{ background:#ff1a1a; }
+  #flash-overlay{ background:#ff1a1a; align-items:center; justify-content:center; }
+  #flash-qr-canvas{ width:min(70vw,70vh); height:min(70vw,70vh); background:#ffffff; border-radius:4px; }
 
   /* ---- toast export ---- */
   #toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
@@ -289,7 +290,7 @@
 
     <!-- Flags -->
     <div class="card">
-      <label class="check-row good"><input type="checkbox" id="f-good"> <span data-i18n="good">Toma buena</span></label>
+      <label class="check-row good" id="row-good"><input type="checkbox" id="f-good"> <span id="f-good-label">Toma buena</span></label>
     </div>
 
   </div>
@@ -321,7 +322,7 @@
   <button id="btn-edit-icon" class="icon-btn edit-icon">&#9998;</button>
 
   <div id="countdown-overlay" class="overlay"><span id="countdown-number">3</span></div>
-  <div id="flash-overlay" class="overlay"></div>
+  <div id="flash-overlay" class="overlay"><canvas id="flash-qr-canvas"></canvas></div>
 </div>
 
 <div id="toast"></div>
@@ -2649,7 +2650,7 @@ const DEFAULT_STATE = {
   int:'INT', dn:'DIA',
   fps:25, mm:35, sht:50, iso:800, ap:2.8, wb:5600, wbCustom:false,
   tomaBuena:false, pendingAdvance:false,
-  pendingGood:'',
+  pendingGood:'', lastTakeNumber:null,
   view:'edit', sub:'qr', lang:'es',
   lastPayload:null,
   log:[]
@@ -2698,7 +2699,7 @@ const I18N = {
     lente:'Lente (mm)', obturador:'Obturador 1/x', diafragma:'Diafragma f/', wb:'Balance de blancos (K)',
     proyecto_section:'Datos de proyecto', proyecto:'Proyecto', director:'Director/a',
     dp:'Dirección de fotografía', camara:'Cámara', tarjeta:'Tarjeta',
-    good:'Toma buena', publicar:'PUBLICAR',
+    good:'Toma buena', good_prev:'¿Toma {n} buena?', publicar:'PUBLICAR',
     proyecto_ph:'Título del proyecto', nombre_ph:'Nombre', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'WB', b_dir:'DIR', b_dp:'DP', b_pr:'PR',
@@ -2712,7 +2713,7 @@ const I18N = {
     lente:'Lens (mm)', obturador:'Shutter 1/x', diafragma:'Aperture f/', wb:'White balance (K)',
     proyecto_section:'Project info', proyecto:'Project', director:'Director',
     dp:'Director of photography', camara:'Camera', tarjeta:'Card',
-    good:'Good take', publicar:'PUBLISH',
+    good:'Good take', good_prev:'Was take {n} good?', publicar:'PUBLISH',
     proyecto_ph:'Project title', nombre_ph:'Name', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
     b_diaf:'APER', b_wb:'WB', b_dir:'DIR', b_dp:'DP', b_pr:'PROJ',
@@ -2726,7 +2727,7 @@ const I18N = {
     lente:'Lentea (mm)', obturador:'Obturadorea 1/x', diafragma:'Diafragma f/', wb:'Zuri balantzea (K)',
     proyecto_section:'Proiektuaren datuak', proyecto:'Proiektua', director:'Zuzendaria',
     dp:'Argazki zuzendaritza', camara:'Kamera', tarjeta:'Txartela',
-    good:'Hartualdi ona', publicar:'ARGITARATU',
+    good:'Hartualdi ona', good_prev:'{n}. hartualdia ona izan da?', publicar:'ARGITARATU',
     proyecto_ph:'Proiektuaren izenburua', nombre_ph:'Izena', camara_ph:'A, B, C...', tarjeta_ph:'A001...',
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'ZB', b_dir:'ZUZ', b_dp:'AZ', b_pr:'PROI',
@@ -2794,6 +2795,13 @@ function renderEdit(){
   document.getElementById('f-card').value = state.card;
 
   document.getElementById('f-good').checked = state.tomaBuena;
+
+  const goodLabel = document.getElementById('f-good-label');
+  if(state.lastTakeNumber){
+    goodLabel.textContent = t('good_prev').replace('{n}', state.lastTakeNumber);
+  } else {
+    goodLabel.textContent = t('good');
+  }
 }
 
 /* ---- eventos pantalla de edicion ---- */
@@ -2892,15 +2900,17 @@ function setSub(sub){
   if(sub === 'qr' && state.lastPayload) drawQR(state.lastPayload);
 }
 
-/* ---- dibujo del QR (claro sobre fondo oscuro, modulos invertidos) ---- */
-function drawQR(payload){
+/* ---- dibujo del QR. Por defecto: claro sobre fondo oscuro en #qr-canvas
+   (modulos invertidos). Acepta canvas/colores alternativos para otros usos
+   (p.ej. el QR de claqueta sobre fondo blanco). ---- */
+function drawQR(payload, canvas, bgColor, fgColor){
+  canvas = canvas || document.getElementById('qr-canvas');
   const json = JSON.stringify(payload);
   const qr = qrcode(0, 'M');
   qr.addData(json);
   qr.make();
   const count = qr.getModuleCount();
 
-  const canvas = document.getElementById('qr-canvas');
   const cssSize = canvas.getBoundingClientRect().width
     || Math.min(window.innerWidth, window.innerHeight) * 0.92;
   const dpr = window.devicePixelRatio || 1;
@@ -2915,8 +2925,8 @@ function drawQR(payload){
 
   const ctx = canvas.getContext('2d');
   const css = getComputedStyle(document.documentElement);
-  const bg = css.getPropertyValue('--bg').trim();
-  const fg = css.getPropertyValue('--fg').trim();
+  const bg = bgColor || css.getPropertyValue('--bg').trim();
+  const fg = fgColor || css.getPropertyValue('--fg').trim();
 
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, pixelSize, pixelSize);
@@ -2929,6 +2939,29 @@ function drawQR(payload){
       }
     }
   }
+}
+
+/* ---- payload del QR de claqueta: se genera en el instante exacto del
+   flash, con el timestamp del dispositivo (ISO 8601, milisegundos).
+   Codifica solo lo esencial: sirve como ancla de sincronizacion
+   (TC de claqueta) y para identificar la toma en la app de escritorio. ---- */
+function buildFlashPayload(){
+  const now = new Date();
+  return {
+    v:1, type:'clap',
+    ts: now.toISOString(),
+    sc:state.sc, sh:state.sh, tk:state.tk,
+    cam:state.cam, card:state.card
+  };
+}
+
+/* ---- dibuja el QR de claqueta sobre fondo blanco (alto contraste para
+   deteccion con zbar/pyzbar), dentro del flash-overlay. ---- */
+function drawFlashQR(){
+  const canvas = document.getElementById('flash-qr-canvas');
+  const payload = buildFlashPayload();
+  drawQR(payload, canvas, '#ffffff', '#000000');
+  return payload;
 }
 
 /* ---- vista de datos ---- */
@@ -2983,11 +3016,12 @@ document.getElementById('btn-publicar').addEventListener('click', publicar);
    El avance de Toma NO se aplica aqui (para soportar repetir la cuenta
    atras varias veces sobre la misma toma, p.ej. "segundo chac"); queda
    marcado como pendiente y se aplica una sola vez al volver a Editar. ---- */
-function confirmRoll(){
+function confirmRoll(clapPayload){
   const goodToUse = state.pendingGood || '';
 
   state.log.push({
     ts: new Date().toISOString(),
+    clap_ts: clapPayload ? clapPayload.ts : '',
     sc: state.sc, sh: state.sh, tk: state.tk,
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
@@ -2995,6 +3029,7 @@ function confirmRoll(){
   });
 
   state.pendingGood = state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : '';
+  state.lastTakeNumber = state.tk;
   state.pendingAdvance = true;
 
   saveState();
@@ -3095,11 +3130,12 @@ function runCountdown(){
       }
       requestAnimationFrame(tick);
     } else {
-      // exactamente a los 3 segundos: flash + confirmacion de rodaje
+      // exactamente a los 3 segundos: flash + QR de claqueta + confirmacion de rodaje
       cdOverlay.classList.remove('show');
+      const clapPayload = drawFlashQR();
       flashOverlay.classList.add('show');
       playClap();
-      confirmRoll();
+      confirmRoll(clapPayload);
       setTimeout(function(){ flashOverlay.classList.remove('show'); }, 1000);
     }
   }
@@ -3141,7 +3177,7 @@ function playClap(){
 
 /* ---- exportar log de sesion (CSV via Web Share API, con fallback de descarga) ---- */
 function buildCSV(){
-  const cols = ['ts','sc','sh','tk','cam','card','int','dn','toma_buena','good_enviado'];
+  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','int','dn','toma_buena','good_enviado'];
   const lines = [cols.join(',')];
   state.log.forEach(row=>{
     lines.push(cols.map(c=>{
