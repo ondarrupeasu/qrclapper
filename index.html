@@ -3101,11 +3101,8 @@ displayEl.addEventListener('touchend', (e)=>{
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5){
-      if(state.sub === 'qr'){
-        setSub('data');
-      } else if(state.lastClapPayload){
-        setSub('qr');
-      }
+      // el swipe ya no cambia de vista: la vista QR solo se muestra
+      // automaticamente tras el flash, con su propia secuencia
     }
   }
   swipeCandidate = false;
