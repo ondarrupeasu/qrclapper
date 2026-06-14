@@ -54,7 +54,8 @@
   .seg-edit{ background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
     padding:8px 6px; text-align:center; }
   .seg-edit .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; margin-bottom:6px; }
-  .cam-segmented button{ font-weight:700; }
+  .cam-segmented{ height:38px; margin-top:2px; }
+  .cam-segmented button{ font-weight:700; font-size:18px; padding:0; }
   .sst-edit{ background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
     padding:8px 6px; text-align:center; }
   .sst-edit .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; }
@@ -163,9 +164,9 @@
     <div class="topbar">
       <h1 data-i18n="title">CLAQUETA DIGITAL</h1>
       <div class="lang-switch segmented" data-field="lang">
+        <button data-value="eu">EU</button>
         <button data-value="es">ES</button>
         <button data-value="en">EN</button>
-        <button data-value="eu">EU</button>
       </div>
       <button id="btn-export" class="icon-btn" title="Exportar log de sesión">&#8682;</button>
     </div>
@@ -179,7 +180,6 @@
             <button data-value="A">A</button>
             <button data-value="B">B</button>
             <button data-value="C">C</button>
-            <button data-value="D">D</button>
           </div>
         </div>
         <div class="sst-edit" data-field="card">
