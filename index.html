@@ -39,6 +39,10 @@
   .topbar h1{ font-family:var(--mono); font-size:15px; letter-spacing:.12em; font-weight:600; margin:0; color:var(--fg);}
   .icon-btn{ background:var(--bg-panel); border:1px solid var(--border); color:var(--fg);
     width:40px; height:40px; border-radius:8px; font-size:18px; display:flex; align-items:center; justify-content:center; }
+  .icon-btn-danger{ color:var(--accent); }
+  .session-card{ display:flex; align-items:center; justify-content:space-between; }
+  .session-card h2{ margin:0; }
+  .session-actions{ display:flex; gap:8px; }
 
   .card{ background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
   .card h2{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
@@ -167,7 +171,28 @@
         <button data-value="es">ES</button>
         <button data-value="en">EN</button>
       </div>
-      <button id="btn-export" class="icon-btn" title="Exportar log de sesión">&#8682;</button>
+    </div>
+
+    <div class="card session-card">
+      <h2 data-i18n="sesion_section">Sesión</h2>
+      <div class="session-actions">
+        <button id="btn-export" class="icon-btn" title="Exportar log de sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M12 16V4"/>
+            <path d="M7 9l5-5 5 5"/>
+            <rect x="4" y="14" width="16" height="6" rx="1"/>
+          </svg>
+        </button>
+        <button id="btn-reset" class="icon-btn icon-btn-danger" title="Reiniciar sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M3 6h18"/>
+            <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+            <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/>
+            <path d="M10 11v6"/>
+            <path d="M14 11v6"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Camara / Tarjeta -->
@@ -2702,6 +2727,7 @@ function clampNum(current, dir, step, min, max){
 const I18N = {
   es: {
     title:'CLAQUETA DIGITAL',
+    sesion_section:'Sesión',
     escena:'Escena', plano:'Plano', toma:'Toma',
     dia:'DÍA', noche:'NOCHE',
     ajustes:'Ajustes técnicos',
@@ -2711,9 +2737,11 @@ const I18N = {
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'WB',
     toast_no_log:'No hay tomas registradas todavía',
+    reset_confirm:'¿Reiniciar la sesión? Se perderá el registro de todas las tomas.',
   },
   en: {
     title:'DIGITAL SLATE',
+    sesion_section:'Session',
     escena:'Scene', plano:'Shot', toma:'Take',
     dia:'DAY', noche:'NIGHT',
     ajustes:'Technical settings',
@@ -2723,9 +2751,11 @@ const I18N = {
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
     b_diaf:'APER', b_wb:'WB',
     toast_no_log:'No takes recorded yet',
+    reset_confirm:'Reset the session? All recorded takes will be lost.',
   },
   eu: {
     title:'KLAKETA DIGITALA',
+    sesion_section:'Saioa',
     escena:'Eszena', plano:'Planoa', toma:'Toma',
     dia:'EGUNA', noche:'GAUA',
     ajustes:'Ezarpen teknikoak',
@@ -2735,6 +2765,7 @@ const I18N = {
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'ZB',
     toast_no_log:'Oraindik ez dago tomarik erregistratuta',
+    reset_confirm:'Saioa berrabiarazi? Erregistratutako toma guztiak galduko dira.',
   },
 };
 function t(key){
@@ -3236,6 +3267,20 @@ async function exportLog(){
   URL.revokeObjectURL(url);
 }
 document.getElementById('btn-export').addEventListener('click', exportLog);
+
+/* ---- reiniciar sesion: vuelve a DEFAULT_STATE preservando el idioma,
+   borra localStorage y vuelve a la pantalla de edicion. ---- */
+function resetSession(){
+  if(!confirm(t('reset_confirm'))) return;
+  const lang = state.lang;
+  localStorage.removeItem('claquetaState');
+  state = Object.assign({}, DEFAULT_STATE);
+  state.lang = lang;
+  saveState();
+  renderEdit();
+  switchScreen('edit');
+}
+document.getElementById('btn-reset').addEventListener('click', resetSession);
 
 /* ---- inicializacion ---- */
 function init(){
