@@ -2776,6 +2776,13 @@ function formatSessionDate(isoDate, lang){
   return `${d}/${m}/${y}`;
 }
 
+/* ---- clave de cruce de "toma buena": incluye cam/card para evitar
+   colisiones cuando se mezclan tomas de varias camaras/tarjetas
+   (p.ej. al cruzar el CSV de sesion en el escritorio). ---- */
+function takenKey(cam, card, sc, sh, tk){
+  return `${sc}-${sh}-${tk}-${cam}-${card}`;
+}
+
 function formatNowTime(){
   const now = new Date();
   const hh = String(now.getHours()).padStart(2,'0');
@@ -3181,7 +3188,7 @@ function confirmRoll(clapPayload){
     toma_buena: state.tomaBuena, good_enviado: goodToUse
   });
 
-  state.pendingGood = state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : '';
+  state.pendingGood = state.tomaBuena ? takenKey(state.cam, state.card, state.sc, state.sh, state.tk) : '';
   if(state.tomaBuena){
     state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
   }
@@ -3393,7 +3400,7 @@ function buildCSV(){
       cam: state.cam, card: state.card,
       int: state.int, dn: state.dn,
       toma_buena: true,
-      good_enviado: `${state.sc}-${state.sh}-${state.lastTakeNumber}`
+      good_enviado: takenKey(state.cam, state.card, state.sc, state.sh, state.lastTakeNumber)
     });
   }
 
@@ -3419,10 +3426,10 @@ function saveCurrentTake(){
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
     toma_buena: state.tomaBuena,
-    good_enviado: state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : ''
+    good_enviado: state.tomaBuena ? takenKey(state.cam, state.card, state.sc, state.sh, state.tk) : ''
   };
 
-  const key = (e)=> `${e.sc}-${e.sh}-${e.tk}-${e.cam}-${e.card}`;
+  const key = (e)=> takenKey(e.cam, e.card, e.sc, e.sh, e.tk);
   const idx = state.log.findIndex(e => key(e) === key(entry));
 
   if(idx >= 0){
