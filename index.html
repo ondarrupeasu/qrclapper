@@ -204,6 +204,13 @@
         <div class="session-stats" id="session-stats"></div>
       </div>
       <div class="session-actions">
+        <button id="btn-save-take" class="icon-btn" title="Guardar toma actual en el log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
+            <path d="M17 21v-8H7v8"/>
+            <path d="M7 3v5h8"/>
+          </svg>
+        </button>
         <button id="btn-export" class="icon-btn" title="Exportar log de sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <path d="M12 16V4"/>
@@ -2817,6 +2824,7 @@ const I18N = {
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'WB',
     toast_no_log:'No hay tomas registradas todavía',
+    toast_take_saved:'Toma guardada en el log de sesión',
     reset_confirm:'¿Reiniciar la sesión? Se perderá el registro de todas las tomas.',
     produccion:'Producción', director:'Director/a', dp:'Dir. de fotografía',
     datos_produccion:'Datos de producción',
@@ -2833,6 +2841,7 @@ const I18N = {
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
     b_diaf:'APER', b_wb:'WB',
     toast_no_log:'No takes recorded yet',
+    toast_take_saved:'Take saved to session log',
     reset_confirm:'Reset the session? All recorded takes will be lost.',
     produccion:'Production', director:'Director', dp:'Cinematographer',
     datos_produccion:'Production info',
@@ -2849,6 +2858,7 @@ const I18N = {
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'ZB',
     toast_no_log:'Oraindik ez dago tomarik erregistratuta',
+    toast_take_saved:'Toma saioaren erregistroan gordeta',
     reset_confirm:'Saioa berrabiarazi? Erregistratutako toma guztiak galduko dira.',
     produccion:'Ekoizpena', director:'Zuzendaria', dp:'Argazki zuzendaria',
     datos_produccion:'Ekoizpenaren datuak',
@@ -3396,6 +3406,41 @@ function buildCSV(){
   });
   return lines.join('\r\n');
 }
+
+/* ---- guardar la toma actual en el log de sesion, reflejando el
+   estado real de "toma buena" en este momento (true o false).
+   Si ya existe una entrada para esta toma (sc-sh-tk-cam-card, p.ej.
+   porque se hizo confirmRoll), se actualiza en lugar de duplicarla. ---- */
+function saveCurrentTake(){
+  const entry = {
+    ts: new Date().toISOString(),
+    clap_ts: '',
+    sc: state.sc, sh: state.sh, tk: state.tk,
+    cam: state.cam, card: state.card,
+    int: state.int, dn: state.dn,
+    toma_buena: state.tomaBuena,
+    good_enviado: state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : ''
+  };
+
+  const key = (e)=> `${e.sc}-${e.sh}-${e.tk}-${e.cam}-${e.card}`;
+  const idx = state.log.findIndex(e => key(e) === key(entry));
+
+  if(idx >= 0){
+    state.log[idx] = Object.assign({}, state.log[idx], entry, {ts: state.log[idx].ts});
+  } else {
+    state.log.push(entry);
+    state.sessionTakeCount = (state.sessionTakeCount || 0) + 1;
+  }
+
+  if(state.tomaBuena){
+    state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
+  }
+
+  saveState();
+  renderSessionHeader();
+  showToast(t('toast_take_saved'));
+}
+document.getElementById('btn-save-take').addEventListener('click', saveCurrentTake);
 
 function showToast(msg){
   const t = document.getElementById('toast');
