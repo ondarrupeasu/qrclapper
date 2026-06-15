@@ -119,7 +119,7 @@
   #qr-canvas{ width:min(92vw,92vh); height:min(92vw,92vh); }
 
   #view-data{ flex-direction:column; padding: calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-right) + 14px) calc(env(safe-area-inset-bottom) + 14px) calc(env(safe-area-inset-left) + 14px); }
-  .clock-row{ font-family:var(--mono); font-size:clamp(13px,2.4vw,18px); color:var(--fg-dim); letter-spacing:.08em;
+  .clock-row{ font-family:var(--mono); color:var(--fg-dim); letter-spacing:.08em;
     padding-right:46px; margin-bottom:6px; white-space:nowrap; }
   .badge{ font-family:var(--mono); font-size:13px; font-size:clamp(11px,2.6vw,15px); color:var(--fg); border:1px solid var(--border);
     border-radius:6px; padding:4px 9px; background:rgba(255,255,255,.03); white-space:nowrap; }
@@ -132,8 +132,8 @@
   .sst-box .l{ font-family:var(--mono); letter-spacing:.18em; color:var(--fg-dim); text-transform:uppercase; }
   .sst-box .v{ font-family:var(--mono); font-weight:700; line-height:1; }
 
-  .badges-bottom{ display:flex; gap:6px; flex-wrap:nowrap; justify-content:space-between; padding-top:10px; }
-  .badges-bottom .badge{ flex:1; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .badges-bottom{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; padding-top:10px; }
+  .badges-bottom .badge{ text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* portrait: SC y PL arriba lado a lado, TK abajo ancho completo. Recuadros y texto grandes. */
   @media (orientation: portrait){
@@ -141,16 +141,21 @@
     .sst-sc{ grid-column:1; grid-row:1; }
     .sst-sh{ grid-column:2; grid-row:1; }
     .sst-tk{ grid-column:1 / span 2; grid-row:2; }
-    .sst-box .l{ font-size:clamp(16px,4vw,22px); }
+    .sst-box .l{ font-size:clamp(18px,4.6vw,26px); }
     .sst-box .v{ font-size:clamp(64px,22vh,34vw); }
-    .badges-bottom .badge{ font-size:clamp(9px,2.2vw,13px); padding:4px 4px; }
+    .sst-sc .v, .sst-sh .v{ font-size:clamp(52px,18vh,28vw); }
+    .clock-row{ font-size:clamp(18px,4.4vw,28px); }
+    .badges-bottom{ flex-wrap:wrap; }
+    .badges-bottom .badge{ flex:1 1 calc(50% - 6px); font-size:clamp(11px,2.6vw,15px); padding:5px 6px; }
   }
   /* landscape: SC, PL, TK tres cajas iguales en fila, recuadros y texto grandes. */
   @media (orientation: landscape){
     .sst-grid{ grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr; }
-    .sst-box .l{ font-size:clamp(16px,3.2vh,24px); }
+    .sst-box .l{ font-size:clamp(18px,3.6vh,26px); }
     .sst-box .v{ font-size:clamp(64px,26vh,22vw); }
-    .badges-bottom .badge{ font-size:clamp(10px,1.6vh,13px); }
+    .clock-row{ font-size:clamp(16px,3.4vh,24px); }
+    .badges-bottom{ flex-wrap:nowrap; }
+    .badges-bottom .badge{ flex:1; font-size:clamp(10px,1.6vh,13px); }
   }
 
   .edit-icon{ position:absolute; top: calc(env(safe-area-inset-top) + 12px); right: calc(env(safe-area-inset-right) + 12px);
