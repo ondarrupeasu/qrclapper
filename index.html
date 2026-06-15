@@ -42,6 +42,9 @@
   .icon-btn-danger{ color:var(--accent); }
   .session-card{ display:flex; align-items:center; justify-content:space-between; }
   .session-card h2{ margin:0; }
+  .session-info{ display:flex; flex-direction:column; gap:2px; }
+  .session-date{ font-family:var(--mono); font-size:14px; font-weight:700; color:var(--fg); letter-spacing:.05em; }
+  .session-stats{ font-family:var(--mono); font-size:11px; color:var(--fg-dim); letter-spacing:.05em; }
   .session-actions{ display:flex; gap:8px; }
 
   .card{ background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
@@ -124,7 +127,7 @@
   .sst-box{ border:1px solid var(--border); border-radius:14px; display:flex; flex-direction:column;
     align-items:center; justify-content:center; min-height:0; overflow:hidden; }
   .sst-box .l{ font-family:var(--mono); font-size:13px; font-size:clamp(11px,2.4vw,15px); letter-spacing:.18em; color:var(--fg-dim); text-transform:uppercase; }
-  .sst-box .v{ font-family:var(--mono); font-weight:700; line-height:1; font-size:80px; font-size:clamp(28px,12vh,18vw); }
+  .sst-box .v{ font-family:var(--mono); font-weight:700; line-height:1; font-size:80px; font-size:clamp(36px,16vh,24vw); }
 
   .badges-bottom{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; padding-top:10px; }
 
@@ -174,7 +177,10 @@
     </div>
 
     <div class="card session-card">
-      <h2 data-i18n="sesion_section">Sesión</h2>
+      <div class="session-info">
+        <div class="session-date" id="session-date"></div>
+        <div class="session-stats" id="session-stats"></div>
+      </div>
       <div class="session-actions">
         <button id="btn-export" class="icon-btn" title="Exportar log de sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
@@ -2684,6 +2690,7 @@ const DEFAULT_STATE = {
   fps:25, mm:35, sht:50, iso:800, ap:2.8, wb:5600, wbCustom:false,
   tomaBuena:false, pendingAdvance:false,
   pendingGood:'', lastTakeNumber:null,
+  sessionDate:null, sessionTakeCount:0, lastGoodTake:'',
   view:'edit', sub:'qr', lang:'es',
   lastPayload:null, lastClapPayload:null,
   log:[]
@@ -2700,6 +2707,10 @@ function saveState(){
   localStorage.setItem('claquetaState', JSON.stringify(state));
 }
 let state = loadState();
+if(!state.sessionDate){
+  state.sessionDate = new Date().toISOString().slice(0,10);
+  saveState();
+}
 
 /* ---- helpers de formato y steppers ---- */
 function formatFps(v){
@@ -2708,6 +2719,13 @@ function formatFps(v){
 }
 function formatAp(v){ return String(v); }
 function formatCard(v){ return String(v).padStart(2,'0'); }
+
+function formatSessionDate(isoDate, lang){
+  if(!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  if(lang === 'en') return `${m}/${d}/${y}`;
+  return `${d}/${m}/${y}`;
+}
 
 function clampList(list, current, dir){
   let idx = list.indexOf(current);
@@ -2727,8 +2745,8 @@ function clampNum(current, dir, step, min, max){
 const I18N = {
   es: {
     title:'CLAQUETA DIGITAL',
-    sesion_section:'Sesión',
     escena:'Escena', plano:'Plano', toma:'Toma',
+    n_tomas:'tomas', ultima_buena:'Última toma buena', sin_tomas_buenas:'—',
     dia:'DÍA', noche:'NOCHE',
     ajustes:'Ajustes técnicos',
     lente:'Lente (mm)', obturador:'Obturador 1/x', diafragma:'Diafragma f/', wb:'Balance de blancos (K)',
@@ -2741,8 +2759,8 @@ const I18N = {
   },
   en: {
     title:'DIGITAL SLATE',
-    sesion_section:'Session',
     escena:'Scene', plano:'Shot', toma:'Take',
+    n_tomas:'takes', ultima_buena:'Last good take', sin_tomas_buenas:'—',
     dia:'DAY', noche:'NIGHT',
     ajustes:'Technical settings',
     lente:'Lens (mm)', obturador:'Shutter 1/x', diafragma:'Aperture f/', wb:'White balance (K)',
@@ -2755,8 +2773,8 @@ const I18N = {
   },
   eu: {
     title:'KLAKETA DIGITALA',
-    sesion_section:'Saioa',
     escena:'Eszena', plano:'Planoa', toma:'Toma',
+    n_tomas:'toma', ultima_buena:'Azken toma ona', sin_tomas_buenas:'—',
     dia:'EGUNA', noche:'GAUA',
     ajustes:'Ezarpen teknikoak',
     lente:'Lentea (mm)', obturador:'Obturadorea 1/x', diafragma:'Diafragma f/', wb:'Zuri balantzea (K)',
@@ -2807,8 +2825,19 @@ function renderWB(){
   }
 }
 
+function renderSessionHeader(){
+  document.getElementById('session-date').textContent =
+    formatSessionDate(state.sessionDate, state.lang);
+
+  const n = state.sessionTakeCount || 0;
+  const ultima = state.lastGoodTake || t('sin_tomas_buenas');
+  document.getElementById('session-stats').textContent =
+    `${n} ${t('n_tomas')} · ${t('ultima_buena')}: ${ultima}`;
+}
+
 function renderEdit(){
   applyI18n();
+  renderSessionHeader();
   ['sc','sh','tk'].forEach(f=>{
     document.querySelector(`.sst-edit[data-field="${f}"] [data-val]`).textContent = state[f];
   });
@@ -3064,10 +3093,15 @@ function confirmRoll(clapPayload){
   });
 
   state.pendingGood = state.tomaBuena ? `${state.sc}-${state.sh}-${state.tk}` : '';
+  if(state.tomaBuena){
+    state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
+  }
   state.lastTakeNumber = state.tk;
+  state.sessionTakeCount = (state.sessionTakeCount || 0) + 1;
   state.pendingAdvance = true;
 
   saveState();
+  renderSessionHeader();
 }
 window.confirmRoll = confirmRoll;
 
@@ -3296,6 +3330,7 @@ function resetSession(){
   localStorage.removeItem('claquetaState');
   state = Object.assign({}, DEFAULT_STATE);
   state.lang = lang;
+  state.sessionDate = new Date().toISOString().slice(0,10);
   saveState();
   renderEdit();
   switchScreen('edit');
