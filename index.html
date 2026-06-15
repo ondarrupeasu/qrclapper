@@ -3112,6 +3112,7 @@ function handleLongPressEnd(e){
 const displayEl = document.getElementById('screen-display');
 
 displayEl.addEventListener('touchstart', (e)=>{
+  unlockAudio();
   if(e.touches.length === 1){
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
@@ -3189,9 +3190,28 @@ function runCountdown(){
 
 /* ---- sonido "clap" sintetizado (Web Audio API) ---- */
 let audioCtx = null;
+
+/* iOS Safari exige que el AudioContext se cree/reanude dentro de un
+   gesto de usuario. Se llama en el primer touchstart de la pantalla
+   para que playClap() suene mas tarde sin gesto directo. */
+function unlockAudio(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume();
+    }
+    const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.start();
+  }catch(e){ /* Web Audio no disponible: se omite el sonido */ }
+}
+
 function playClap(){
   try{
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
     const ctx = audioCtx;
     const duration = 0.18;
     const bufferSize = Math.floor(ctx.sampleRate * duration);
