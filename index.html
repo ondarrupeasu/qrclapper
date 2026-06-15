@@ -119,6 +119,8 @@
   #qr-canvas{ width:min(92vw,92vh); height:min(92vw,92vh); }
 
   #view-data{ flex-direction:column; padding: calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-right) + 14px) calc(env(safe-area-inset-bottom) + 14px) calc(env(safe-area-inset-left) + 14px); }
+  .clock-row{ font-family:var(--mono); font-size:clamp(13px,2.4vw,18px); color:var(--fg-dim); letter-spacing:.08em;
+    padding-right:46px; margin-bottom:6px; white-space:nowrap; }
   .badges-top{ display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; padding-right:46px; }
   .badge{ font-family:var(--mono); font-size:13px; font-size:clamp(11px,2.6vw,15px); color:var(--fg); border:1px solid var(--border);
     border-radius:6px; padding:4px 9px; background:rgba(255,255,255,.03); white-space:nowrap; }
@@ -359,6 +361,7 @@
   </div>
 
   <div id="view-data" class="view">
+    <div class="clock-row" id="clock-row"></div>
     <div class="badges-top" id="badges-top"></div>
     <div class="sst-mid">
       <div class="sst-grid">
@@ -2746,6 +2749,18 @@ function formatNowTime(){
   const ss = String(now.getSeconds()).padStart(2,'0');
   return `${hh}:${mm}:${ss}`;
 }
+function formatNowDate(lang){
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2,'0');
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const y = now.getFullYear();
+  if(lang === 'en') return `${m}/${d}/${y}`;
+  return `${d}/${m}/${y}`;
+}
+function renderClock(){
+  const el = document.getElementById('clock-row');
+  if(el) el.textContent = `${formatNowDate(state.lang)}  ${formatNowTime()}`;
+}
 
 function clampList(list, current, dir){
   let idx = list.indexOf(current);
@@ -3387,10 +3402,12 @@ function init(){
   setSub(sub);
 }
 init();
+renderClock();
 
 setInterval(()=>{
   const el = document.getElementById('session-time');
   if(el) el.textContent = formatNowTime();
+  renderClock();
 }, 1000);
 
 
