@@ -1,6 +1,6 @@
 {
-  "name": "ClapTap",
-  "short_name": "ClapTap",
+  "name": "ClapTab",
+  "short_name": "ClapTab",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
