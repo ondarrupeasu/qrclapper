@@ -1,2 +1,2 @@
-# claqueta-digital
-Claqueta digital con QR para rodajes (PWA)
+# ClapTap
+ClapTap — Claqueta digital con QR para rodajes (PWA)
