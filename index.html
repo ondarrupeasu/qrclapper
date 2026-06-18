@@ -114,8 +114,8 @@
   .take-tag-row{ display:flex; align-items:center; gap:8px; padding:8px 2px; }
   .take-tag-row .tag-lbl{ font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--fg-dim); text-transform:uppercase; flex:1; }
   .take-tag-btn{ font-family:var(--mono); font-size:13px; font-weight:700; border:2px solid var(--border); border-radius:8px; padding:6px 14px; background:transparent; color:var(--fg-dim); cursor:pointer; transition:all .15s; letter-spacing:.06em; }
-  .take-tag-btn.good-btn.active{ border-color:var(--accent-good); color:var(--accent-good); background:rgba(74,222,128,.12); }
-  .take-tag-btn.bad-btn.active{ border-color:var(--accent-bad); color:var(--accent-bad); background:rgba(248,113,113,.12); }
+  .take-tag-btn.good-btn.active{ border-color:var(--accent-good); color:#0a0a0a; background:var(--accent-good); }
+  .take-tag-btn.bad-btn.active{ border-color:var(--accent-bad); color:#0a0a0a; background:var(--accent-bad); }
   .take-tag-btn:hover:not(.active){ border-color:var(--fg-dim); color:var(--fg); }
 
   /* ---- boton publicar ---- */
@@ -2839,7 +2839,7 @@ const I18N = {
     ajustes:'Ajustes técnicos',
     lente:'Lente (mm)', obturador:'Obturador 1/x', diafragma:'Diafragma f/', wb:'Balance de blancos (K)',
     camara:'Cámara', tarjeta:'Tarjeta',
-    good:'Toma buena', good_prev:'¿Toma {n} buena?', publicar:'PUBLICAR',
+    good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'WB',
     toast_no_log:'No hay tomas registradas todavía',
@@ -2856,7 +2856,7 @@ const I18N = {
     ajustes:'Technical settings',
     lente:'Lens (mm)', obturador:'Shutter 1/x', diafragma:'Aperture f/', wb:'White balance (K)',
     camara:'Camera', tarjeta:'Card',
-    good:'Good take', good_prev:'Was take {n} good?', publicar:'PUBLISH',
+    good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
     b_diaf:'APER', b_wb:'WB',
     toast_no_log:'No takes recorded yet',
@@ -2873,7 +2873,7 @@ const I18N = {
     ajustes:'Ezarpen teknikoak',
     lente:'Lentea (mm)', obturador:'Obturadorea 1/x', diafragma:'Diafragma f/', wb:'Zuri balantzea (K)',
     camara:'Kamera', tarjeta:'Txartela',
-    good:'Toma ona', good_prev:'{n}. toma ona izan da?', publicar:'ARGITARATU',
+    good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'ZB',
     toast_no_log:'Oraindik ez dago tomarik erregistratuta',
