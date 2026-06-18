@@ -45,10 +45,37 @@
   .session-card{ display:flex; align-items:center; justify-content:space-between; }
   .session-card h2{ margin:0; }
   .session-info{ display:flex; flex-direction:column; gap:2px; }
-  .session-date{ font-family:var(--mono); font-size:14px; font-weight:700; color:var(--fg); letter-spacing:.05em; }
-  .session-time{ font-weight:400; color:var(--fg-dim); }
-  .session-stats{ font-family:var(--mono); font-size:11px; color:var(--fg-dim); letter-spacing:.05em; }
-  .session-actions{ display:flex; gap:8px; }
+  .session-time{ font-family:var(--mono); font-size:14px; font-weight:700; color:var(--fg); letter-spacing:.05em; display:block; }
+  .session-date{ font-family:var(--mono); font-size:11px; font-weight:400; color:var(--fg-dim); letter-spacing:.05em; display:block; }
+  .session-actions{ display:flex; gap:8px; align-items:center; }
+  .btn-log-sep{ margin-right:8px; }
+
+  /* pantalla log */
+  #screen-log{ overflow-y:auto; height:100vh; }
+  .log-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px; }
+  .log-table{ border-collapse:collapse; width:max-content; min-width:100%; font-family:var(--mono); font-size:12px; }
+  .log-table th{ background:var(--bg-panel); color:var(--fg-dim); font-weight:600; letter-spacing:.08em;
+    padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; position:sticky; top:0; z-index:1; }
+  .log-table th.col-fixed{ position:sticky; background:var(--bg-panel); z-index:2; }
+  .log-table th.col-hora{ left:0; }
+  .log-table th.col-sc{ left:72px; }
+  .log-table th.col-sh{ left:112px; }
+  .log-table th.col-tk{ left:152px; }
+  .log-table th.col-good{ left:192px; border-right:1px solid var(--border); }
+  .log-table td{ padding:6px 10px; border-bottom:1px solid var(--border); white-space:nowrap; color:var(--fg); }
+  .log-table td.col-fixed{ position:sticky; background:var(--bg); }
+  .log-table td.col-hora{ left:0; }
+  .log-table td.col-sc{ left:72px; }
+  .log-table td.col-sh{ left:112px; }
+  .log-table td.col-tk{ left:152px; }
+  .log-table td.col-good{ left:192px; border-right:1px solid var(--border); }
+  .log-table tr.row-buena td{ color:var(--accent-good); }
+  .log-table tr.row-mala td{ color:var(--accent-bad); }
+  .log-table tr:last-child td{ border-bottom:none; }
+  .th-sort{ cursor:pointer; user-select:none; }
+  .th-sort:hover{ color:var(--fg); }
+  .sort-arrow{ margin-left:4px; font-size:9px; }
+  .log-empty{ text-align:center; color:var(--fg-dim); font-family:var(--mono); font-size:13px; padding:40px 0; }
 
   .card{ background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
   .card h2{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
@@ -207,10 +234,16 @@
 
     <div class="card session-card">
       <div class="session-info">
-        <div class="session-date"><span id="session-date"></span> <span class="session-time" id="session-time"></span></div>
-        <div class="session-stats" id="session-stats"></div>
+        <span class="session-time" id="session-time"></span>
+        <span class="session-date" id="session-date"></span>
       </div>
       <div class="session-actions">
+        <button id="btn-log" class="icon-btn btn-log-sep" title="Histórico de sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
         <button id="btn-save-take" class="icon-btn" title="Guardar toma actual en el log">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
@@ -397,6 +430,74 @@
 
   <div class="btn-publicar">
     <button id="btn-publicar" data-i18n="publicar">PUBLICAR</button>
+  </div>
+</div>
+
+<!-- ================= PANTALLA HISTÓRICO ================= -->
+<div id="screen-log" class="screen">
+  <div class="edit-inner">
+
+    <div class="topbar">
+      <h1 data-i18n="title">CLAPTAG</h1>
+      <div class="lang-switch segmented" data-field="lang">
+        <button data-value="eu">EU</button>
+        <button data-value="es">ES</button>
+        <button data-value="en">EN</button>
+      </div>
+    </div>
+
+    <div class="card session-card">
+      <div class="session-info">
+        <span class="session-time" id="log-session-time"></span>
+        <span class="session-date" id="log-session-date"></span>
+      </div>
+      <div class="session-actions">
+        <button id="btn-log-back" class="icon-btn btn-log-sep" title="Volver a edición">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="12" y2="15"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="exportLog()" title="Exportar log de sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><rect x="4" y="14" width="16" height="6" rx="1"/>
+          </svg>
+        </button>
+        <button class="icon-btn icon-btn-danger" onclick="resetSession()" title="Reiniciar sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+            <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="log-table-wrap">
+      <table class="log-table" id="log-table">
+        <thead>
+          <tr>
+            <th class="col-fixed col-hora th-sort" id="th-hora">HORA <span class="sort-arrow" id="sort-arrow">↑</span></th>
+            <th class="col-fixed col-sc">SC</th>
+            <th class="col-fixed col-sh">SH</th>
+            <th class="col-fixed col-tk">TK</th>
+            <th class="col-fixed col-good">✓</th>
+            <th>CAM</th>
+            <th>CARD</th>
+            <th>I/E</th>
+            <th>D/N</th>
+            <th>FPS</th>
+            <th>MM</th>
+            <th>SHT</th>
+            <th>ISO</th>
+            <th>AP</th>
+            <th>WB</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+      <div class="log-empty" id="log-empty" style="display:none">Sin tomas registradas</div>
+    </div>
+
   </div>
 </div>
 
@@ -2924,14 +3025,14 @@ function renderWB(){
 }
 
 function renderSessionHeader(){
-  document.getElementById('session-date').textContent =
-    formatSessionDate(state.sessionDate, state.lang);
-  document.getElementById('session-time').textContent = formatNowTime();
-
-  const n = state.sessionTakeCount || 0;
-  const ultima = state.lastGoodTake || t('sin_tomas_buenas');
-  document.getElementById('session-stats').textContent =
-    `${n} ${t('n_tomas')} · ${t('ultima_buena')}: ${ultima}`;
+  const timeStr = formatNowTime();
+  const dateStr = formatSessionDate(state.sessionDate, state.lang);
+  document.getElementById('session-time').textContent = timeStr;
+  document.getElementById('session-date').textContent = dateStr;
+  const lt = document.getElementById('log-session-time');
+  const ld = document.getElementById('log-session-date');
+  if(lt) lt.textContent = timeStr;
+  if(ld) ld.textContent = dateStr;
 }
 
 function renderEdit(){
@@ -3058,6 +3159,8 @@ function switchScreen(name){
   state.view = name;
   document.getElementById('screen-edit').classList.toggle('active', name === 'edit');
   document.getElementById('screen-display').classList.toggle('active', name === 'display');
+  document.getElementById('screen-log').classList.toggle('active', name === 'log');
+  if(name === 'log') renderLog();
   saveState();
 }
 function setSub(sub){
@@ -3209,6 +3312,7 @@ function confirmRoll(clapPayload){
     sc: state.sc, sh: state.sh, tk: state.tk,
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
+    fps: state.fps, mm: state.mm, sht: state.sht, iso: state.iso, ap: state.ap, wb: state.wb,
     toma_buena: state.goodTag, good_enviado: goodToUse
   });
 
@@ -3396,7 +3500,7 @@ function playClap(){
 
 /* ---- exportar log de sesion (CSV via Web Share API, con fallback de descarga) ---- */
 function buildCSV(){
-  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','int','dn','toma_buena','good_enviado'];
+  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','int','dn','fps','mm','sht','iso','ap','wb','toma_buena','good_enviado'];
   const lines = [];
 
   const meta = [
@@ -3449,6 +3553,7 @@ function saveCurrentTake(){
     sc: state.sc, sh: state.sh, tk: state.tk,
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
+    fps: state.fps, mm: state.mm, sht: state.sht, iso: state.iso, ap: state.ap, wb: state.wb,
     toma_buena: state.goodTag,
     good_enviado: state.goodTag === 'buena' ? takenKey(state.cam, state.card, state.sc, state.sh, state.tk) : (state.goodTag === 'mala' ? 'mala' : '')
   };
@@ -3472,6 +3577,64 @@ function saveCurrentTake(){
   showToast(t('toast_take_saved'));
 }
 document.getElementById('btn-save-take').addEventListener('click', saveCurrentTake);
+
+/* ---- histórico ---- */
+let logSortAsc = true;
+
+function renderLog(){
+  const tbody = document.getElementById('log-tbody');
+  const empty = document.getElementById('log-empty');
+  const arrow = document.getElementById('sort-arrow');
+  if(!state.log || state.log.length === 0){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  arrow.textContent = logSortAsc ? '↑' : '↓';
+
+  const entries = logSortAsc ? [...state.log] : [...state.log].reverse();
+
+  tbody.innerHTML = entries.map(e => {
+    const hora = e.clap_ts ? e.clap_ts.slice(11,19) : (e.ts ? e.ts.slice(11,19) : '—');
+    const good = e.toma_buena === 'buena' ? '✓' : e.toma_buena === 'mala' ? '✗' : '—';
+    const rowClass = e.toma_buena === 'buena' ? 'row-buena' : e.toma_buena === 'mala' ? 'row-mala' : '';
+    const fps = e.fps != null ? (Number.isInteger(e.fps) ? e.fps : parseFloat(e.fps).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')) : '—';
+    const mm  = e.mm   != null ? e.mm + 'mm' : '—';
+    const sht = e.sht  != null ? '1/' + e.sht : '—';
+    const iso = e.iso  != null ? e.iso : '—';
+    const ap  = e.ap   != null ? 'f' + e.ap : '—';
+    const wb  = e.wb   != null ? e.wb + 'K' : '—';
+    return `<tr class="${rowClass}">
+      <td class="col-fixed col-hora">${hora}</td>
+      <td class="col-fixed col-sc">${e.sc ?? '—'}</td>
+      <td class="col-fixed col-sh">${e.sh ?? '—'}</td>
+      <td class="col-fixed col-tk">${e.tk ?? '—'}</td>
+      <td class="col-fixed col-good">${good}</td>
+      <td>${e.cam ?? '—'}</td>
+      <td>${e.card != null ? String(e.card).padStart(2,'0') : '—'}</td>
+      <td>${e.int ?? '—'}</td>
+      <td>${e.dn ?? '—'}</td>
+      <td>${fps}</td>
+      <td>${mm}</td>
+      <td>${sht}</td>
+      <td>${iso}</td>
+      <td>${ap}</td>
+      <td>${wb}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('btn-log').addEventListener('click', ()=>{
+  switchScreen('log');
+});
+document.getElementById('btn-log-back').addEventListener('click', ()=>{
+  switchScreen('edit');
+});
+document.getElementById('th-hora').addEventListener('click', ()=>{
+  logSortAsc = !logSortAsc;
+  renderLog();
+});
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -3535,8 +3698,11 @@ init();
 renderClock();
 
 setInterval(()=>{
+  const timeStr = formatNowTime();
   const el = document.getElementById('session-time');
-  if(el) el.textContent = formatNowTime();
+  if(el) el.textContent = timeStr;
+  const le = document.getElementById('log-session-time');
+  if(le) le.textContent = timeStr;
   renderClock();
 }, 1000);
 
