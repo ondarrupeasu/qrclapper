@@ -31,7 +31,7 @@
   /* ---------- estructura general ---------- */
   .screen{ display:none; height:100%; width:100%; }
   .screen.active{ display:block; }
-  #screen-log{ display:none; height:100vh; overflow:hidden;
+  #screen-log{ display:none; height:100vh; overflow:hidden; box-sizing:border-box;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
   #screen-log.active{ display:block; }
   #screen-log > .log-wrap-inner{ display:flex; flex-direction:column; height:100%; }
@@ -55,8 +55,11 @@
   .btn-log-sep{ margin-right:8px; }
 
   /* pantalla log */
-  #screen-log .edit-inner{ padding-bottom:0; width:100%; box-sizing:border-box; }
-  .log-wrap-inner{ display:flex; flex-direction:column; height:100%; }
+  #shared-header{ position:fixed; top:0; left:0; right:0; z-index:10; background:var(--bg);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  #shared-header .edit-inner{ padding-top:14px; padding-bottom:0; }
+  #screen-edit{ padding-top:0; }
+  #screen-log{ padding-top:0; }
   .log-table-wrap{ display:flex; flex:1; min-height:0; overflow:hidden; padding:0 14px; }
   .log-fixed-wrap{ flex-shrink:0; overflow-y:auto; overflow-x:hidden; border-right:2px solid var(--border); }
   .log-scroll-wrap{ flex:1; overflow-x:auto; overflow-y:auto; -webkit-overflow-scrolling:touch; }
@@ -217,10 +220,9 @@
 </head>
 <body>
 
-<!-- ================= PANTALLA EDICION ================= -->
-<div id="screen-edit" class="screen active">
-  <div class="edit-inner">
-
+<!-- ================= HEADER COMPARTIDO (fijo, siempre visible) ================= -->
+<div id="shared-header">
+  <div class="edit-inner" style="padding-bottom:0;">
     <div class="topbar">
       <h1 data-i18n="title">CLAPTAG</h1>
       <div class="lang-switch segmented" data-field="lang">
@@ -229,7 +231,6 @@
         <button data-value="en">EN</button>
       </div>
     </div>
-
     <div class="card session-card">
       <div class="session-info">
         <span class="session-time" id="session-time"></span>
@@ -237,7 +238,7 @@
       </div>
       <div class="session-actions">
         <button id="btn-log" class="icon-btn btn-log-sep" title="Histórico de sesión">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <svg id="btn-log-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
             <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
           </svg>
@@ -267,6 +268,12 @@
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ================= PANTALLA EDICION ================= -->
+<div id="screen-edit" class="screen active">
+  <div class="edit-inner">
 
     <!-- Datos de produccion: solo viajan al CSV de sesion, nunca al QR -->
     <div class="card collapsed" id="card-produccion">
@@ -434,51 +441,6 @@
 <!-- ================= PANTALLA HISTÓRICO ================= -->
 <div id="screen-log" class="screen">
 <div class="log-wrap-inner">
-  <div class="edit-inner">
-
-    <div class="topbar">
-      <h1 data-i18n="title">CLAPTAG</h1>
-      <div class="lang-switch segmented" data-field="lang">
-        <button data-value="eu">EU</button>
-        <button data-value="es">ES</button>
-        <button data-value="en">EN</button>
-      </div>
-    </div>
-
-    <div class="card session-card">
-      <div class="session-info">
-        <span class="session-time" id="log-session-time"></span>
-        <span class="session-date" id="log-session-date"></span>
-      </div>
-      <div class="session-actions">
-        <button id="btn-log-back" class="icon-btn btn-log-sep" title="Volver a edición">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="12" y2="15"/>
-          </svg>
-        </button>
-        <button class="icon-btn" onclick="saveCurrentTake()" title="Guardar toma actual en el log">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
-            <path d="M17 21v-8H7v8"/>
-            <path d="M7 3v5h8"/>
-          </svg>
-        </button>
-        <button class="icon-btn" onclick="exportLog()" title="Exportar log de sesión">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><rect x="4" y="14" width="16" height="6" rx="1"/>
-          </svg>
-        </button>
-        <button class="icon-btn icon-btn-danger" onclick="resetSession()" title="Reiniciar sesión">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-            <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-  </div>
 
   <div class="log-table-wrap">
     <div class="log-fixed-wrap" id="log-fixed-wrap">
@@ -3048,10 +3010,6 @@ function renderSessionHeader(){
   const dateStr = formatSessionDate(state.sessionDate, state.lang);
   document.getElementById('session-time').textContent = timeStr;
   document.getElementById('session-date').textContent = dateStr;
-  const lt = document.getElementById('log-session-time');
-  const ld = document.getElementById('log-session-date');
-  if(lt) lt.textContent = timeStr;
-  if(ld) ld.textContent = dateStr;
 }
 
 function renderEdit(){
@@ -3174,17 +3132,22 @@ function buildPayload(goodVal){
 }
 
 /* ---- pantallas ---- */
-function switchScreen(name){
-  const editEl = document.getElementById('screen-edit');
-  const logEl  = document.getElementById('screen-log');
-  // sincronizar scroll para que el header quede en el mismo sitio
-  if(name === 'log')  logEl.scrollTop  = editEl.scrollTop;
-  if(name === 'edit') editEl.scrollTop = logEl.scrollTop;
 
+// SVG icono histórico (lista con puntos)
+const ICON_LOG = `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>`;
+// SVG icono edición (lápiz)
+const ICON_EDIT = `<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>`;
+
+function switchScreen(name){
   state.view = name;
-  editEl.classList.toggle('active', name === 'edit');
+  document.getElementById('screen-edit').classList.toggle('active', name === 'edit');
   document.getElementById('screen-display').classList.toggle('active', name === 'display');
-  logEl.classList.toggle('active', name === 'log');
+  document.getElementById('screen-log').classList.toggle('active', name === 'log');
+  // shared header: ocultar cuando display, mostrar en edit/log
+  document.getElementById('shared-header').style.display = (name === 'display') ? 'none' : '';
+  // cambiar icono del botón log/edit
+  const icon = document.getElementById('btn-log-icon');
+  if(icon) icon.innerHTML = (name === 'log') ? ICON_EDIT : ICON_LOG;
   if(name === 'log') renderLog();
   saveState();
 }
@@ -3677,10 +3640,7 @@ function renderLog(){
 }
 
 document.getElementById('btn-log').addEventListener('click', ()=>{
-  switchScreen('log');
-});
-document.getElementById('btn-log-back').addEventListener('click', ()=>{
-  switchScreen('edit');
+  switchScreen(state.view === 'log' ? 'edit' : 'log');
 });
 document.getElementById('th-hora').addEventListener('click', ()=>{
   logSortAsc = !logSortAsc;
@@ -3745,20 +3705,27 @@ function init(){
   if(sub === 'qr' && !state.lastClapPayload) sub = 'data';
   setSub(sub);
 }
+
+function adjustHeaderOffset(){
+  const h = document.getElementById('shared-header').offsetHeight;
+  document.getElementById('screen-edit').style.paddingTop = h + 'px';
+  document.getElementById('screen-log').style.paddingTop = h + 'px';
+}
+
 init();
+adjustHeaderOffset();
 renderClock();
 
 setInterval(()=>{
   const timeStr = formatNowTime();
   const el = document.getElementById('session-time');
   if(el) el.textContent = timeStr;
-  const le = document.getElementById('log-session-time');
-  if(le) le.textContent = timeStr;
   renderClock();
 }, 1000);
 
 
 window.addEventListener('resize', ()=>{
+  adjustHeaderOffset();
   if(state.view === 'display' && state.sub === 'qr' && state.lastClapPayload) drawQR(state.lastClapPayload, document.getElementById('qr-canvas'), '#ffffff', '#000000');
   if(state.view === 'display' && state.sub === 'data' && state.lastPayload) renderDataView(state.lastPayload);
 });
