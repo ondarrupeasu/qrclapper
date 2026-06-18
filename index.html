@@ -382,7 +382,7 @@
     </div>
 
     <!-- Flags -->
-    <div class="card">
+    <div class="card" id="card-flags">
       <div class="take-tag-row">
         <span class="tag-lbl" id="f-good-label">T.— ¿buena/mala?</span>
         <div class="segmented take-tag-seg" data-field="goodTag">
@@ -2960,10 +2960,10 @@ function renderEdit(){
   document.getElementById('f-dp').value = state.dp || '';
 
   const goodLabel = document.getElementById('f-good-label');
-  if(goodLabel){
-    goodLabel.textContent = state.lastTakeNumber
-      ? t('good_prev').replace('{n}', state.lastTakeNumber)
-      : t('good');
+  const cardFlags = document.getElementById('card-flags');
+  if(cardFlags) cardFlags.style.display = state.lastTakeNumber ? '' : 'none';
+  if(goodLabel && state.lastTakeNumber){
+    goodLabel.textContent = t('good_prev').replace('{n}', state.lastTakeNumber);
   }
 }
 
