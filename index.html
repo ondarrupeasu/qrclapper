@@ -56,10 +56,11 @@
 
   /* pantalla log */
   #shared-header.log-mode .lang-switch{ opacity:0; pointer-events:none; }
+  #shared-header{ position:fixed; top:0; left:0; right:0; z-index:10; background:var(--bg);
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
   #shared-header .edit-inner{ padding-top:14px; padding-bottom:0; }
-  #screen-edit{ padding-top:0; }
-  #screen-log{ padding-top:0; }
+  #screen-edit{ padding-top:calc(130px + env(safe-area-inset-top)); }
+  #screen-log{ padding-top:calc(130px + env(safe-area-inset-top)); }
   .log-table-wrap{ display:flex; flex:1; min-height:0; overflow:hidden; padding:0 14px; }
   .log-fixed-wrap{ flex-shrink:0; overflow-y:auto; overflow-x:hidden; border-right:2px solid var(--border); }
   .log-scroll-wrap{ flex:1; overflow-x:auto; overflow-y:auto; -webkit-overflow-scrolling:touch; }
@@ -3714,14 +3715,7 @@ function init(){
   setSub(sub);
 }
 
-function adjustHeaderOffset(){
-  const h = document.getElementById('shared-header').offsetHeight;
-  document.getElementById('screen-edit').style.paddingTop = h + 'px';
-  document.getElementById('screen-log').style.paddingTop = h + 'px';
-}
-
 init();
-adjustHeaderOffset();
 renderClock();
 
 setInterval(()=>{
@@ -3733,7 +3727,6 @@ setInterval(()=>{
 
 
 window.addEventListener('resize', ()=>{
-  adjustHeaderOffset();
   if(state.view === 'display' && state.sub === 'qr' && state.lastClapPayload) drawQR(state.lastClapPayload, document.getElementById('qr-canvas'), '#ffffff', '#000000');
   if(state.view === 'display' && state.sub === 'data' && state.lastPayload) renderDataView(state.lastPayload);
 });
