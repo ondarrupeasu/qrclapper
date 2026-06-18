@@ -55,7 +55,7 @@
   .btn-log-sep{ margin-right:8px; }
 
   /* pantalla log */
-  #shared-header{ position:fixed; top:0; left:0; right:0; z-index:10; background:var(--bg);
+  body.view-log #shared-header .lang-switch{ visibility:hidden; }
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
   #shared-header .edit-inner{ padding-top:14px; padding-bottom:0; }
   #screen-edit{ padding-top:0; }
@@ -3152,6 +3152,7 @@ function switchScreen(name){
   document.getElementById('screen-log').classList.toggle('active', name === 'log');
   // shared header: ocultar cuando display, mostrar en edit/log
   document.getElementById('shared-header').style.display = (name === 'display') ? 'none' : '';
+  document.body.classList.toggle('view-log', name === 'log');
   // cambiar icono del botón log/edit
   const icon = document.getElementById('btn-log-icon');
   if(icon) icon.innerHTML = (name === 'log') ? ICON_EDIT : ICON_LOG;
