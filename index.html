@@ -3996,13 +3996,18 @@ async function calibMeasureLatency(){
   audioCtx = actx;
   if(actx.state === 'suspended') await actx.resume();
 
-  // Preparar grabación de la entrada del micrófono
+  // Buffer mínimo para minimizar latencia de grabación (~6ms a 44100Hz)
+  const SCRIPT_BUFFER = 256;
   const source   = actx.createMediaStreamSource(calibMicStream);
-  const recorder = actx.createScriptProcessor(4096, 1, 1);
+  const recorder = actx.createScriptProcessor(SCRIPT_BUFFER, 1, 1);
   const buffers  = [];
   let recording  = false;
   let recStart   = 0;
-  const REC_DURATION = 0.8;  // grabar 800ms después de emitir el click
+  const REC_DURATION = 0.8;
+
+  // Latencia de salida del sistema (DAC + driver) — disponible en AudioContext
+  const outputLatencyMs = Math.round((actx.outputLatency || 0) * 1000);
+  const inputLatencyMs  = Math.round((actx.inputLatency  || 0) * 1000);
 
   recorder.onaudioprocess = e => {
     if(!recording) return;
@@ -4067,7 +4072,10 @@ function processCalibRecording(buffers, sr, emitTime){
   // La grabación empezó en emitTime; cada sample = 1/sr segundos
   // El onset está a (onsetSample / sr) segundos desde el inicio de la grabación,
   // que empezó justo cuando se emitió el click.
-  const latencyMs = Math.round((onsetSample / sr) * 1000);
+  // Latencia acústica real = onset medido - latencia del pipeline de audio del sistema
+  const rawMs     = Math.round((onsetSample / sr) * 1000);
+  const systemMs  = outputLatencyMs + inputLatencyMs;
+  const latencyMs = Math.max(0, rawMs - systemMs);
 
   calibMeasurements.push(latencyMs);
   const avg = Math.round(calibMeasurements.reduce((a,b)=>a+b,0) / calibMeasurements.length);
@@ -4078,9 +4086,10 @@ function processCalibRecording(buffers, sr, emitTime){
   sliderVal.textContent = latencyMs + ' ms';
 
   const nMeas = calibMeasurements.length;
+  const sysInfo = systemMs > 0 ? ` (sistema: ${systemMs}ms descontado)` : '';
   statusEl.textContent = nMeas === 1
-    ? `Medición: ${latencyMs} ms — repite para más precisión`
-    : `Medición ${nMeas}: ${latencyMs} ms (promedio: ${avg} ms)`;
+    ? `Medición: ${latencyMs} ms${sysInfo} — repite para más precisión`
+    : `Medición ${nMeas}: ${latencyMs} ms (promedio: ${avg} ms)${sysInfo}`;
 }
 
 /* ── Listeners de la pantalla de calibración ─────────────────── */
