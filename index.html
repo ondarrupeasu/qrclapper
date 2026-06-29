@@ -36,6 +36,30 @@
   #screen-log.active{ display:block; }
   #screen-log > .log-wrap-inner{ display:flex; flex-direction:column; height:100%; }
 
+  #screen-calibrate{ display:none; height:100vh; overflow-y:auto; box-sizing:border-box;
+    padding: calc(130px + env(safe-area-inset-top)) 16px 32px; }
+  #screen-calibrate.active{ display:block; }
+  .calib-title{ font-size:1.1rem; font-weight:600; margin-bottom:4px; }
+  .calib-desc{ font-size:0.82rem; opacity:0.6; margin-bottom:20px; line-height:1.4; }
+  .calib-canvas-wrap{ background:#111; border-radius:10px; overflow:hidden; margin-bottom:20px; }
+  #calib-canvas{ width:100%; height:120px; display:block; }
+  .calib-result{ font-size:2.6rem; font-weight:700; text-align:center;
+    margin:8px 0 4px; letter-spacing:-1px; }
+  .calib-result.no-measure{ opacity:0.25; }
+  .calib-result-label{ font-size:0.78rem; opacity:0.55; text-align:center; margin-bottom:20px; }
+  .calib-btn{ width:100%; padding:14px; border-radius:12px; border:none;
+    font-size:1rem; font-weight:600; cursor:pointer;
+    background:var(--accent,#e63946); color:#fff; margin-bottom:12px; }
+  .calib-btn:active{ opacity:0.8; }
+  .calib-btn.secondary{ background:rgba(255,255,255,0.08); color:inherit; }
+  .calib-row{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .calib-row label{ font-size:0.85rem; opacity:0.7; white-space:nowrap; }
+  .calib-row input[type=range]{ flex:1; accent-color:var(--accent,#e63946); }
+  .calib-row .calib-val{ font-size:0.85rem; font-weight:600; min-width:48px; text-align:right; }
+  .calib-saved{ font-size:0.78rem; opacity:0.45; text-align:center; margin-top:6px; }
+  .calib-status{ font-size:0.82rem; opacity:0.6; text-align:center;
+    min-height:1.4em; margin-bottom:8px; }
+
   /* ================= PANTALLA EDICION ================= */
   #screen-edit{ overflow-y:scroll; height:100vh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 16px) env(safe-area-inset-left); }
@@ -238,6 +262,14 @@
         <span class="session-date" id="session-date"></span>
       </div>
       <div class="session-actions">
+        <button id="btn-calibrate" class="icon-btn" title="Calibrar latencia Bluetooth">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
         <button id="btn-log" class="icon-btn btn-log-sep" title="Histórico de sesión">
           <svg id="btn-log-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
@@ -482,6 +514,37 @@
 
 </div><!-- /log-wrap-inner -->
 </div><!-- /screen-log -->
+
+<!-- ================= PANTALLA CALIBRACIÓN BT ================= -->
+<div id="screen-calibrate" class="screen">
+  <p class="calib-title">Calibrar latencia Bluetooth</p>
+  <p class="calib-desc">
+    Conecta tu altavoz BT y sube el volumen al máximo.<br>
+    Pulsa <strong>Emitir click</strong> — el micrófono capturará el sonido
+    y calculará cuántos ms tarda en llegar. Repite 3–5 veces y usa
+    el promedio. El valor se aplica automáticamente a la cuenta atrás.
+  </p>
+
+  <div class="calib-canvas-wrap">
+    <canvas id="calib-canvas" height="120"></canvas>
+  </div>
+
+  <div class="calib-result no-measure" id="calib-result">— ms</div>
+  <div class="calib-result-label">Latencia medida</div>
+  <div class="calib-status" id="calib-status">Listo</div>
+
+  <button class="calib-btn" id="btn-calib-measure">🔊 Emitir click y medir</button>
+
+  <div class="calib-row">
+    <label>Compensación manual</label>
+    <input type="range" id="calib-slider" min="0" max="300" step="1" value="0">
+    <span class="calib-val" id="calib-slider-val">0 ms</span>
+  </div>
+
+  <button class="calib-btn secondary" id="btn-calib-save">Guardar y aplicar</button>
+  <button class="calib-btn secondary" id="btn-calib-reset">Eliminar compensación</button>
+  <div class="calib-saved" id="calib-saved-info"></div>
+</div><!-- /screen-calibrate -->
 
 <!-- ================= PANTALLA QR / DATOS ================= -->
 <div id="screen-display" class="screen">
@@ -3151,13 +3214,15 @@ function switchScreen(name){
   document.getElementById('screen-edit').classList.toggle('active', name === 'edit');
   document.getElementById('screen-display').classList.toggle('active', name === 'display');
   document.getElementById('screen-log').classList.toggle('active', name === 'log');
-  // shared header: ocultar cuando display, mostrar en edit/log
+  document.getElementById('screen-calibrate').classList.toggle('active', name === 'calibrate');
+  // shared header: ocultar cuando display, mostrar en edit/log/calibrate
   document.getElementById('shared-header').style.display = (name === 'display') ? 'none' : '';
-  document.getElementById('shared-header').classList.toggle('log-mode', name === 'log');
+  document.getElementById('shared-header').classList.toggle('log-mode', name === 'log' || name === 'calibrate');
   // cambiar icono del botón log/edit
   const icon = document.getElementById('btn-log-icon');
   if(icon) icon.innerHTML = (name === 'log') ? ICON_EDIT : ICON_LOG;
   if(name === 'log') renderLog();
+  if(name === 'calibrate') calibInitScreen();
   saveState();
 }
 function setSub(sub){
@@ -3400,12 +3465,18 @@ displayEl.addEventListener('touchend', (e)=>{
 displayEl.addEventListener('touchcancel', handleLongPressEnd, {passive:true});
 
 /* ---- beep de cuenta atras (tono sinusoidal puro) ---- */
+/* Lee la compensación BT guardada (0 si no hay ninguna) */
+function calibGetSavedMs(){
+  return parseInt(localStorage.getItem('claptag_bt_latency_ms') || '0', 10) || 0;
+}
 /* Patrón de sync EBU-inspired:
    5, 4 → silencio
    3, 2, 1 → beep corto 880Hz 80ms   (tres pulsos equiespaciados 1s)
    SYNC  → beep largo 1320Hz 500ms   (quinta justa, inequívoco en waveform)
-   El punto de sync es el primer sample del beep largo. */
-function playBeep(freq, duration){
+   El punto de sync es el primer sample del beep largo.
+   Si hay compensación BT guardada, los beeps se pre-schedulan ese nº de ms
+   antes usando el reloj de alta resolución de WebAudio. */
+function playBeep(freq, duration, scheduleOffsetMs){
   try{
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
@@ -3414,14 +3485,17 @@ function playBeep(freq, duration){
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq || 880;
-    gain.gain.setValueAtTime(0.0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(8.0, ctx.currentTime + 0.003); // ataque <3ms → flanco limpio
-    gain.gain.setValueAtTime(8.0, ctx.currentTime + duration);
-    gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + duration + 0.010);
+    // scheduleOffsetMs < 0 = adelantar (compensación BT); 0 = ahora
+    const t0 = ctx.currentTime + (scheduleOffsetMs || 0) / 1000;
+    const tOn  = Math.max(ctx.currentTime, t0);  // nunca en el pasado
+    gain.gain.setValueAtTime(0.0, tOn);
+    gain.gain.linearRampToValueAtTime(8.0, tOn + 0.003);
+    gain.gain.setValueAtTime(8.0, tOn + duration);
+    gain.gain.linearRampToValueAtTime(0.0, tOn + duration + 0.010);
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration + 0.015);
+    osc.start(tOn);
+    osc.stop(tOn + duration + 0.015);
   }catch(e){}
 }
 
@@ -3430,12 +3504,13 @@ function runCountdown(){
   const cdOverlay = document.getElementById('countdown-overlay');
   const cdNumber  = document.getElementById('countdown-number');
   const flashOverlay = document.getElementById('flash-overlay');
-  // 5 y 4 en silencio, beep corto en 3/2/1, beep largo en SYNC
   const sequence  = [5, 4, 3, 2, 1];
-  const BEEP_NUMS = new Set([3, 2, 1]);   // solo estos llevan beep corto
+  const BEEP_NUMS = new Set([3, 2, 1]);
+  // Compensación BT: adelantar el audio este nº de ms respecto al visual
+  const btComp = calibGetSavedMs ? calibGetSavedMs() : 0;
 
   cdOverlay.classList.add('show');
-  cdNumber.textContent = sequence[0];     // muestra el 5
+  cdNumber.textContent = sequence[0];
 
   var startTime = performance.now();
 
@@ -3448,17 +3523,15 @@ function runCountdown(){
       if(cdNumber.textContent !== String(num)){
         cdNumber.textContent = num;
         if(BEEP_NUMS.has(num)){
-          playBeep(880, 0.080);   // beep corto 880Hz en 3, 2, 1
+          playBeep(880, 0.080, -btComp);   // negativo = adelantar
         }
       }
       requestAnimationFrame(tick);
     } else {
-      // Exactamente a los 5s: flash + beep largo de sync + confirmación de rodaje.
-      // El primer sample del beep largo ES el punto de sync.
       cdOverlay.classList.remove('show');
       const clapPayload = buildFlashPayload();
       flashOverlay.classList.add('show');
-      playBeep(1320, 0.500);   // beep largo 1320Hz (quinta justa sobre 880Hz)
+      playBeep(1320, 0.500, -btComp);   // beep largo de sync, adelantado si hay BT
       confirmRoll(clapPayload);
       setTimeout(function(){
         flashOverlay.classList.remove('show');
@@ -3470,8 +3543,6 @@ function runCountdown(){
     }
   }
 
-  // Primer beep: el 5 no lleva beep, el primer beep es en el 3 (step=2).
-  // No reproducimos nada al mostrar el 5.
   requestAnimationFrame(tick);
 }
 
@@ -3689,6 +3760,10 @@ function renderLog(){
   }
 }
 
+document.getElementById('btn-calibrate').addEventListener('click', ()=>{
+  switchScreen(state.view === 'calibrate' ? 'edit' : 'calibrate');
+});
+
 document.getElementById('btn-log').addEventListener('click', ()=>{
   switchScreen(state.view === 'log' ? 'edit' : 'log');
 });
@@ -3771,6 +3846,241 @@ window.addEventListener('resize', ()=>{
   if(state.view === 'display' && state.sub === 'qr' && state.lastClapPayload) drawQR(state.lastClapPayload, document.getElementById('qr-canvas'), '#ffffff', '#000000');
   if(state.view === 'display' && state.sub === 'data' && state.lastPayload) renderDataView(state.lastPayload);
 });
+
+/* ══════════════════════════════════════════════════════════════
+   CALIBRACIÓN DE LATENCIA BLUETOOTH
+   Emite un click impulsivo por el altavoz, lo captura con el
+   micrófono y mide el tiempo entre emisión y recepción.
+   El valor se guarda en localStorage y runCountdown() lo usa
+   para adelantar los playBeep() el número de ms necesario.
+══════════════════════════════════════════════════════════════ */
+
+const CALIB_STORAGE_KEY = 'claptag_bt_latency_ms';
+let calibMicStream   = null;
+
+/* Actualiza el label de estado del slider y el saved-info */
+function calibUpdateUI(){
+  const saved = calibGetSavedMs();
+  const savedInfo = document.getElementById('calib-saved-info');
+  if(saved > 0){
+    savedInfo.textContent = `✓ Compensación activa: ${saved} ms — los beeps sonarán ${saved} ms antes`;
+  } else {
+    savedInfo.textContent = 'Sin compensación activa';
+  }
+}
+
+/* Inicializa la pantalla al entrar en ella */
+function calibInitScreen(){
+  calibUpdateUI();
+  const slider   = document.getElementById('calib-slider');
+  const sliderVal= document.getElementById('calib-slider-val');
+  const saved    = calibGetSavedMs();
+  slider.value   = saved;
+  sliderVal.textContent = saved + ' ms';
+  if(calibMeasurements.length > 0){
+    const avg = Math.round(calibMeasurements.reduce((a,b)=>a+b,0) / calibMeasurements.length);
+    document.getElementById('calib-result').textContent = avg + ' ms';
+    document.getElementById('calib-result').classList.remove('no-measure');
+  }
+  calibStartOscilloscope();
+}
+
+/* ── Osciloscopio en tiempo real ──────────────────────────────── */
+function calibStartOscilloscope(){
+  const canvas  = document.getElementById('calib-canvas');
+  const ctx2d   = canvas.getContext('2d');
+  if(!canvas) return;
+
+  // Pedir micrófono si no lo tenemos ya
+  if(!calibMicStream){
+    navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false,
+      noiseSuppression:false, autoGainControl:false }, video:false })
+    .then(stream => {
+      calibMicStream = stream;
+      const actx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = actx;
+      const source = actx.createMediaStreamSource(stream);
+      calibAnalyser = actx.createAnalyser();
+      calibAnalyser.fftSize = 1024;
+      source.connect(calibAnalyser);
+      calibDrawOscilloscope(canvas, ctx2d);
+    })
+    .catch(()=>{
+      document.getElementById('calib-status').textContent =
+        '⚠ Sin acceso al micrófono — activa el permiso en Ajustes';
+    });
+  } else {
+    calibDrawOscilloscope(canvas, ctx2d);
+  }
+}
+
+function calibDrawOscilloscope(canvas, ctx2d){
+  if(calibAnimFrame) cancelAnimationFrame(calibAnimFrame);
+  if(!calibAnalyser) return;
+
+  const buf = new Uint8Array(calibAnalyser.frequencyBinCount);
+  const W = canvas.width  = canvas.offsetWidth  * (window.devicePixelRatio||1);
+  const H = canvas.height = canvas.offsetHeight * (window.devicePixelRatio||1);
+
+  function draw(){
+    if(state.view !== 'calibrate'){ cancelAnimationFrame(calibAnimFrame); return; }
+    calibAnimFrame = requestAnimationFrame(draw);
+    calibAnalyser.getByteTimeDomainData(buf);
+
+    ctx2d.fillStyle = '#111';
+    ctx2d.fillRect(0, 0, W, H);
+    // línea central
+    ctx2d.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx2d.lineWidth = 1;
+    ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
+    // waveform
+    ctx2d.strokeStyle = '#e63946';
+    ctx2d.lineWidth = Math.max(1, W/500);
+    ctx2d.beginPath();
+    const sliceW = W / buf.length;
+    let x = 0;
+    for(let i=0; i<buf.length; i++){
+      const v = buf[i] / 128.0;
+      const y = (v * H) / 2;
+      i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+      x += sliceW;
+    }
+    ctx2d.stroke();
+  }
+  draw();
+}
+
+/* ── Medición de latencia ─────────────────────────────────────── */
+async function calibMeasureLatency(){
+  if(calibMeasuring) return;
+  const statusEl = document.getElementById('calib-status');
+  const resultEl = document.getElementById('calib-result');
+
+  if(!calibMicStream){
+    statusEl.textContent = '⚠ Sin micrófono — activa el permiso primero';
+    return;
+  }
+
+  calibMeasuring = true;
+  statusEl.textContent = 'Escuchando…';
+  document.getElementById('btn-calib-measure').disabled = true;
+
+  const actx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx = actx;
+  if(actx.state === 'suspended') await actx.resume();
+
+  // Preparar grabación de la entrada del micrófono
+  const source   = actx.createMediaStreamSource(calibMicStream);
+  const recorder = actx.createScriptProcessor(4096, 1, 1);
+  const buffers  = [];
+  let recording  = false;
+  let recStart   = 0;
+  const REC_DURATION = 0.8;  // grabar 800ms después de emitir el click
+
+  recorder.onaudioprocess = e => {
+    if(!recording) return;
+    buffers.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    if((actx.currentTime - recStart) >= REC_DURATION){
+      recording = false;
+      source.disconnect();
+      recorder.disconnect();
+      processCalibRecording(buffers, actx.sampleRate, emitTime);
+    }
+  };
+  source.connect(recorder);
+  recorder.connect(actx.destination);   // necesario en algunos browsers
+
+  // Emitir click impulsivo (1ms de ruido blanco a máxima amplitud)
+  const clickBuf = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.001), actx.sampleRate);
+  const clickData = clickBuf.getChannelData(0);
+  for(let i=0;i<clickData.length;i++) clickData[i] = (i === 0) ? 1.0 : 0.0;
+  const clickSrc = actx.createBufferSource();
+  clickSrc.buffer = clickBuf;
+  const clickGain = actx.createGain();
+  clickGain.gain.value = 8.0;
+  clickSrc.connect(clickGain);
+  clickGain.connect(actx.destination);
+
+  const emitTime = actx.currentTime + 0.05;   // 50ms de margen para arrancar la grabación
+  clickSrc.start(emitTime);
+  recStart  = emitTime;
+  recording = true;
+
+  statusEl.textContent = '🔊 Click emitido — escuchando respuesta…';
+}
+
+function processCalibRecording(buffers, sr, emitTime){
+  const statusEl = document.getElementById('calib-status');
+  const resultEl = document.getElementById('calib-result');
+  const slider   = document.getElementById('calib-slider');
+  const sliderVal= document.getElementById('calib-slider-val');
+
+  // Concatenar todos los buffers
+  const total = buffers.reduce((s,b)=>s+b.length, 0);
+  const sig   = new Float32Array(total);
+  let off = 0;
+  for(const b of buffers){ sig.set(b, off); off += b.length; }
+
+  // Buscar el primer pico > 20% del máximo absoluto (onset del click recibido)
+  const maxAbs = sig.reduce((m,v)=>Math.max(m,Math.abs(v)), 0);
+  const threshold = maxAbs * 0.20;
+  let onsetSample = -1;
+  for(let i=0; i<sig.length; i++){
+    if(Math.abs(sig[i]) >= threshold){ onsetSample = i; break; }
+  }
+
+  calibMeasuring = false;
+  document.getElementById('btn-calib-measure').disabled = false;
+
+  if(onsetSample < 0 || maxAbs < 0.01){
+    statusEl.textContent = '⚠ No se detectó el click — sube el volumen o acerca el altavoz';
+    return;
+  }
+
+  // La grabación empezó en emitTime; cada sample = 1/sr segundos
+  // El onset está a (onsetSample / sr) segundos desde el inicio de la grabación,
+  // que empezó justo cuando se emitió el click.
+  const latencyMs = Math.round((onsetSample / sr) * 1000);
+
+  calibMeasurements.push(latencyMs);
+  const avg = Math.round(calibMeasurements.reduce((a,b)=>a+b,0) / calibMeasurements.length);
+
+  resultEl.textContent = latencyMs + ' ms';
+  resultEl.classList.remove('no-measure');
+  slider.value  = latencyMs;
+  sliderVal.textContent = latencyMs + ' ms';
+
+  const nMeas = calibMeasurements.length;
+  statusEl.textContent = nMeas === 1
+    ? `Medición: ${latencyMs} ms — repite para más precisión`
+    : `Medición ${nMeas}: ${latencyMs} ms (promedio: ${avg} ms)`;
+}
+
+/* ── Listeners de la pantalla de calibración ─────────────────── */
+document.getElementById('btn-calib-measure').addEventListener('click', calibMeasureLatency);
+
+document.getElementById('calib-slider').addEventListener('input', function(){
+  document.getElementById('calib-slider-val').textContent = this.value + ' ms';
+});
+
+document.getElementById('btn-calib-save').addEventListener('click', ()=>{
+  const val = parseInt(document.getElementById('calib-slider').value, 10);
+  localStorage.setItem(CALIB_STORAGE_KEY, val);
+  calibUpdateUI();
+  showToast(val > 0 ? `Compensación de ${val} ms guardada` : 'Compensación eliminada');
+});
+
+document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
+  localStorage.removeItem(CALIB_STORAGE_KEY);
+  document.getElementById('calib-slider').value = 0;
+  document.getElementById('calib-slider-val').textContent = '0 ms';
+  calibMeasurements = [];
+  document.getElementById('calib-result').textContent = '— ms';
+  document.getElementById('calib-result').classList.add('no-measure');
+  calibUpdateUI();
+  showToast('Compensación eliminada');
+});
+
 </script>
 </body>
 </html>
