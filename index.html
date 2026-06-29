@@ -4074,7 +4074,7 @@ async function calibMeasureLatency(){
       calibMeasurements.push(latencyMs);
       const avg    = Math.round(calibMeasurements.reduce((a,b)=>a+b,0) / calibMeasurements.length);
       const nMeas  = calibMeasurements.length;
-      const sysStr = systemMs > 0 ? ` (sistema: ${systemMs}ms)` : \'\';
+      const sysStr = systemMs > 0 ? ` (sistema: ${systemMs}ms)` : '';
 
       resultEl.textContent = latencyMs + ' ms';
       resultEl.classList.remove('no-measure');
