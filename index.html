@@ -3872,17 +3872,23 @@ function calibUpdateUI(){
 /* Inicializa la pantalla al entrar en ella */
 function calibInitScreen(){
   calibUpdateUI();
-  const slider   = document.getElementById('calib-slider');
-  const sliderVal= document.getElementById('calib-slider-val');
-  const saved    = calibGetSavedMs();
-  slider.value   = saved;
+  const slider    = document.getElementById('calib-slider');
+  const sliderVal = document.getElementById('calib-slider-val');
+  const saved     = calibGetSavedMs();
+  slider.value    = saved;
   sliderVal.textContent = saved + ' ms';
   if(calibMeasurements.length > 0){
     const avg = Math.round(calibMeasurements.reduce((a,b)=>a+b,0) / calibMeasurements.length);
     document.getElementById('calib-result').textContent = avg + ' ms';
     document.getElementById('calib-result').classList.remove('no-measure');
   }
-  calibStartOscilloscope();
+  // Si ya tenemos el micrófono de una medición anterior, arrancar osciloscopio
+  if(calibMicStream){
+    calibStartOscilloscope();
+  } else {
+    document.getElementById('calib-status').textContent =
+      'Pulsa "Emitir click y medir" para activar el micrófono';
+  }
 }
 
 /* ── Osciloscopio en tiempo real ──────────────────────────────── */
@@ -3956,13 +3962,25 @@ async function calibMeasureLatency(){
   const statusEl = document.getElementById('calib-status');
   const resultEl = document.getElementById('calib-result');
 
+  // Pedir micrófono aquí — dentro de un gesto directo del usuario (iOS Safari)
   if(!calibMicStream){
-    statusEl.textContent = '⚠ Sin micrófono — activa el permiso primero';
-    return;
+    statusEl.textContent = 'Solicitando acceso al micrófono…';
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false },
+        video:false
+      });
+      calibMicStream = stream;
+      statusEl.textContent = 'Micrófono activo — midiendo…';
+      calibStartOscilloscope();  // arrancar osciloscopio ahora que tenemos el micro
+    } catch(err){
+      statusEl.textContent = '⚠ Sin acceso al micrófono — actívalo en Ajustes → Safari';
+      return;
+    }
   }
 
   calibMeasuring = true;
-  statusEl.textContent = 'Escuchando…';
+  statusEl.textContent = 'Preparando…';
   document.getElementById('btn-calib-measure').disabled = true;
 
   const actx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
