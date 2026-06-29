@@ -3494,7 +3494,7 @@ function playClap(){
 
     const gain = ctx.createGain();
     // Ataque instantáneo al máximo, decay muy rápido (crack percusivo)
-    gain.gain.setValueAtTime(3.5, ctx.currentTime);
+    gain.gain.setValueAtTime(8.0, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
     noise.connect(highpass);
