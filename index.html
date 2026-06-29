@@ -3400,6 +3400,11 @@ displayEl.addEventListener('touchend', (e)=>{
 displayEl.addEventListener('touchcancel', handleLongPressEnd, {passive:true});
 
 /* ---- beep de cuenta atras (tono sinusoidal puro) ---- */
+/* Patrón de sync EBU-inspired:
+   5, 4 → silencio
+   3, 2, 1 → beep corto 880Hz 80ms   (tres pulsos equiespaciados 1s)
+   SYNC  → beep largo 1320Hz 500ms   (quinta justa, inequívoco en waveform)
+   El punto de sync es el primer sample del beep largo. */
 function playBeep(freq, duration){
   try{
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -3410,49 +3415,50 @@ function playBeep(freq, duration){
     osc.type = 'sine';
     osc.frequency.value = freq || 880;
     gain.gain.setValueAtTime(0.0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(6.0, ctx.currentTime + 0.005);  // ataque rápido
-    gain.gain.setValueAtTime(6.0, ctx.currentTime + (duration || 0.12));
-    gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + (duration || 0.12) + 0.02);
+    gain.gain.linearRampToValueAtTime(8.0, ctx.currentTime + 0.003); // ataque <3ms → flanco limpio
+    gain.gain.setValueAtTime(8.0, ctx.currentTime + duration);
+    gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + duration + 0.010);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + (duration || 0.12) + 0.03);
+    osc.stop(ctx.currentTime + duration + 0.015);
   }catch(e){}
 }
 
-/* ---- cuenta atras 3-2-1 + flash rojo + clap ---- */
+/* ---- cuenta atras 5-4-3-2-1 + beep largo de sync ---- */
 function runCountdown(){
   const cdOverlay = document.getElementById('countdown-overlay');
-  const cdNumber = document.getElementById('countdown-number');
+  const cdNumber  = document.getElementById('countdown-number');
   const flashOverlay = document.getElementById('flash-overlay');
-  const sequence = [3, 2, 1];
-  let i = 0;
+  // 5 y 4 en silencio, beep corto en 3/2/1, beep largo en SYNC
+  const sequence  = [5, 4, 3, 2, 1];
+  const BEEP_NUMS = new Set([3, 2, 1]);   // solo estos llevan beep corto
 
   cdOverlay.classList.add('show');
-  cdNumber.textContent = sequence[0];
-  playBeep(880, 0.12);   // beep en el 3
+  cdNumber.textContent = sequence[0];     // muestra el 5
 
   var startTime = performance.now();
 
   function tick(){
     var elapsed = performance.now() - startTime;
-    var step = Math.floor(elapsed / 1000);
+    var step    = Math.floor(elapsed / 1000);
 
     if(step < sequence.length){
       var num = sequence[step];
       if(cdNumber.textContent !== String(num)){
         cdNumber.textContent = num;
-        playBeep(880, 0.12);   // beep en el 2 y en el 1
+        if(BEEP_NUMS.has(num)){
+          playBeep(880, 0.080);   // beep corto 880Hz en 3, 2, 1
+        }
       }
       requestAnimationFrame(tick);
     } else {
-      // exactamente a los 3 segundos: flash rojo a pantalla completa,
-      // confirmacion de rodaje (genera el payload con TC del dispositivo).
-      // El QR se muestra DESPUES, al desaparecer el flash.
+      // Exactamente a los 5s: flash + beep largo de sync + confirmación de rodaje.
+      // El primer sample del beep largo ES el punto de sync.
       cdOverlay.classList.remove('show');
       const clapPayload = buildFlashPayload();
       flashOverlay.classList.add('show');
-      playClap();
+      playBeep(1320, 0.500);   // beep largo 1320Hz (quinta justa sobre 880Hz)
       confirmRoll(clapPayload);
       setTimeout(function(){
         flashOverlay.classList.remove('show');
@@ -3464,6 +3470,8 @@ function runCountdown(){
     }
   }
 
+  // Primer beep: el 5 no lleva beep, el primer beep es en el 3 (step=2).
+  // No reproducimos nada al mostrar el 5.
   requestAnimationFrame(tick);
 }
 
