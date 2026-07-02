@@ -224,12 +224,7 @@
   #screen-display{ position:relative; height:100vh; width:100vw; overflow:hidden; touch-action:none; }
   .view{ position:absolute; top:0; right:0; bottom:0; left:0; display:none; }
   .view.active{ display:flex; }
-  /* ---- botón de esquina en la vista de datos (invertir colores) ---- */
-  .disp-corner-btn{ position:absolute; top:calc(env(safe-area-inset-top) + 10px);
-    right:calc(env(safe-area-inset-right) + 10px); z-index:6; width:42px; height:42px;
-    border-radius:50%; border:1px solid var(--border); background:rgba(20,20,20,.5);
-    color:var(--fg); font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  /* ---- modo negativo de la pantalla de datos (fondo blanco, texto negro) ---- */
+  /* ---- modo negativo de la pantalla de datos (tap de un dedo para alternar) ---- */
   #screen-display.negative #view-data{ background:#fff; }
   #screen-display.negative .sst-box{ border-color:#111; }
   #screen-display.negative .sst-box .v{ color:#000; }
@@ -238,7 +233,6 @@
   #screen-display.negative .badge{ color:#000; border-color:#999; }
   #screen-display.negative .badge .l{ color:#555; }
   #screen-display.negative .edit-icon{ color:#000; border-color:#999; background:rgba(255,255,255,.5); }
-  #screen-display.negative .disp-corner-btn{ color:#000; border-color:#999; background:rgba(255,255,255,.5); }
   #view-qr{ align-items:center; justify-content:center; }
   #qr-canvas{ width:min(92vw,92vh); height:min(92vw,92vh); }
 
@@ -289,8 +283,17 @@
   .overlay{ position:absolute; top:0; right:0; bottom:0; left:0; display:flex; align-items:center; justify-content:center;
     z-index:20; pointer-events:none; opacity:0; transition:opacity .08s; }
   .overlay.show{ opacity:1; }
-  #countdown-overlay{ background:var(--bg); }
-  #countdown-overlay span{ font-family:var(--mono); font-weight:700; font-size:42vh; color:var(--fg); }
+  #countdown-overlay{ background:#000; }
+  /* Cuenta atrás estilo leader de cine: aguja/barra que da la vuelta en 1 s,
+     blanco sobre negro. Sin parpadeo ni grano. */
+  .cd-leader{ position:relative; width:80vmin; height:80vmin; display:flex; align-items:center; justify-content:center; }
+  #cd-svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .cd-cross{ stroke:rgba(255,255,255,.16); stroke-width:.4; }
+  .cd-ring{ fill:none; stroke:rgba(255,255,255,.35); stroke-width:.7; }
+  .cd-wedge{ fill:rgba(255,255,255,.13); }
+  .cd-hand{ stroke:#fff; stroke-width:.9; stroke-linecap:round; }
+  #countdown-number{ position:relative; z-index:1; font-family:var(--mono);
+    font-weight:700; font-size:40vmin; color:#fff; line-height:1; }
   #flash-overlay{ background:#ff1a1a; }
 
   /* ---- toast export ---- */
@@ -612,7 +615,6 @@
   </div>
 
   <div id="view-data" class="view">
-    <button id="btn-negative" class="disp-corner-btn" title="Invertir colores (fondo blanco)">◐</button>
     <div class="clock-row" id="clock-row"></div>
     <div class="sst-mid">
       <div class="sst-grid">
@@ -626,7 +628,18 @@
 
   <button id="btn-edit-icon" class="icon-btn edit-icon">&#9998;</button>
 
-  <div id="countdown-overlay" class="overlay"><span id="countdown-number">3</span></div>
+  <div id="countdown-overlay" class="overlay">
+    <div class="cd-leader">
+      <svg id="cd-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <line class="cd-cross" x1="50" y1="0" x2="50" y2="100"/>
+        <line class="cd-cross" x1="0" y1="50" x2="100" y2="50"/>
+        <circle class="cd-ring" cx="50" cy="50" r="47"/>
+        <path id="cd-wedge" class="cd-wedge" d=""/>
+        <line id="cd-hand" class="cd-hand" x1="50" y1="50" x2="50" y2="3"/>
+      </svg>
+      <span id="countdown-number">3</span>
+    </div>
+  </div>
   <div id="flash-overlay" class="overlay"></div>
 </div>
 
@@ -3513,12 +3526,6 @@ function renderDataView(payload){
 function applyNegative(){
   document.getElementById('screen-display').classList.toggle('negative', !!state.negativeData);
 }
-document.getElementById('btn-negative').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  state.negativeData = !state.negativeData;
-  saveState();
-  applyNegative();
-});
 
 /* ---- publicar ---- */
 function publicar(){
@@ -3633,6 +3640,12 @@ displayEl.addEventListener('touchend', (e)=>{
     if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5){
       // el swipe ya no cambia de vista: la vista QR solo se muestra
       // automaticamente tras el flash, con su propia secuencia
+    } else if(Math.abs(dx) < 20 && Math.abs(dy) < 20 && state.sub === 'data' && !longPressFired){
+      // Tap de un dedo en la vista de datos → alternar modo negativo.
+      // (La claqueta se dispara con long-press de dos dedos, no colisiona.)
+      state.negativeData = !state.negativeData;
+      saveState();
+      applyNegative();
     }
   }
   swipeCandidate = false;
@@ -3676,24 +3689,49 @@ function playBeep(freq, duration, scheduleOffsetMs){
   }catch(e){}
 }
 
-/* ---- cuenta atras 5-4-3-2-1 + beep largo de sync ---- */
+/* ---- barrido tipo reloj del leader: la aguja + cuña dan una vuelta
+   completa (0→1) en el segundo actual. frac ∈ [0,1]. ---- */
+function cdSweep(frac){
+  const wedge = document.getElementById('cd-wedge');
+  const hand  = document.getElementById('cd-hand');
+  if(!wedge || !hand) return;
+  const cx = 50, cy = 50, r = 47;
+  frac = Math.max(0, Math.min(1, frac));
+  const ang = frac * 2 * Math.PI;            // sentido horario desde arriba
+  const ex = cx + r * Math.sin(ang);
+  const ey = cy - r * Math.cos(ang);
+  const large = ang > Math.PI ? 1 : 0;
+  if(frac <= 0.0001){
+    wedge.setAttribute('d', '');
+  } else if(frac >= 0.9999){
+    wedge.setAttribute('d', `M${cx},${cy} L${cx},${cy - r} A${r},${r} 0 1 1 ${(cx - 0.01).toFixed(3)},${(cy - r).toFixed(3)} Z`);
+  } else {
+    wedge.setAttribute('d', `M${cx},${cy} L${cx},${cy - r} A${r},${r} 0 ${large} 1 ${ex.toFixed(3)},${ey.toFixed(3)} Z`);
+  }
+  hand.setAttribute('x2', ex.toFixed(3));
+  hand.setAttribute('y2', ey.toFixed(3));
+}
+
+/* ---- cuenta atras 3-2-1 (leader de cine) + beep largo de sync ---- */
 function runCountdown(){
   const cdOverlay = document.getElementById('countdown-overlay');
   const cdNumber  = document.getElementById('countdown-number');
   const flashOverlay = document.getElementById('flash-overlay');
-  const sequence  = [5, 4, 3, 2, 1];
+  const sequence  = [3, 2, 1];
   const BEEP_NUMS = new Set([3, 2, 1]);
   // Compensación BT: adelantar el audio este nº de ms respecto al visual
   const btComp = calibGetSavedMs ? calibGetSavedMs() : 0;
 
   cdOverlay.classList.add('show');
   cdNumber.textContent = sequence[0];
+  cdSweep(0);
 
   var startTime = performance.now();
 
   function tick(){
     var elapsed = performance.now() - startTime;
-    var step    = Math.floor(elapsed / 1000);
+    var t       = elapsed / 1000;
+    var step    = Math.floor(t);
 
     if(step < sequence.length){
       var num = sequence[step];
@@ -3703,8 +3741,10 @@ function runCountdown(){
           playBeep(880, 0.080, -btComp);   // negativo = adelantar
         }
       }
+      cdSweep(t - step);                   // fracción del segundo actual
       requestAnimationFrame(tick);
     } else {
+      cdSweep(1);
       cdOverlay.classList.remove('show');
       const clapPayload = buildFlashPayload();
       flashOverlay.classList.add('show');
