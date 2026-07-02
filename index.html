@@ -3469,7 +3469,7 @@ function buildFlashPayload(){
 }
 
 /* ---- secuencia de QR tras el clap: mismo payload (mismo timestamp),
-   fondo con luminancia decreciente en pasos de 1s. Da margen para que
+   fondo con luminancia decreciente en pasos de 0,5s. Da margen para que
    al menos un paso coincida con la exposicion de la camara. Al terminar,
    vuelve a la vista de datos automaticamente. ---- */
 const QR_FADE_BACKGROUNDS = ['#ffffff','#cccccc','#999999','#666666','#333333','#0d0d0d'];
@@ -3487,7 +3487,7 @@ function runQrFadeSequence(payload){
     }
     drawQR(payload, canvas, QR_FADE_BACKGROUNDS[i], '#000000');
     i += 1;
-    setTimeout(step, 1000);
+    setTimeout(step, 500);   // medio segundo por paso (~12 frames a 24fps)
   }
   step();
 }
@@ -3716,7 +3716,6 @@ function cdSweep(frac){
 function runCountdown(){
   const cdOverlay = document.getElementById('countdown-overlay');
   const cdNumber  = document.getElementById('countdown-number');
-  const flashOverlay = document.getElementById('flash-overlay');
   const sequence  = [3, 2, 1];
   const BEEP_NUMS = new Set([3, 2, 1]);
   // Compensación BT: adelantar el audio este nº de ms respecto al visual
@@ -3747,16 +3746,14 @@ function runCountdown(){
       cdSweep(1);
       cdOverlay.classList.remove('show');
       const clapPayload = buildFlashPayload();
-      flashOverlay.classList.add('show');
+      // Sin flash rojo: el QR aparece JUSTO en el punto de sync (su primer
+      // frame en blanco hace de marca visual). El beep de sync se mantiene.
       playBeep(1320, 0.500, -btComp);   // beep largo de sync, adelantado si hay BT
       confirmRoll(clapPayload);
-      setTimeout(function(){
-        flashOverlay.classList.remove('show');
-        state.lastClapPayload = clapPayload;
-        saveState();
-        setSub('qr');
-        runQrFadeSequence(clapPayload);
-      }, 1000);
+      state.lastClapPayload = clapPayload;
+      saveState();
+      setSub('qr');
+      runQrFadeSequence(clapPayload);
     }
   }
 
