@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b0b0c">
 <title>ClapperQR</title>
 <style>
@@ -4120,6 +4121,15 @@ document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
   showToast('Compensación eliminada');
 });
 
+</script>
+<script>
+  // Registrar el service worker (offline). No bloquea si falla.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .catch((err) => console.warn('SW registro falló:', err));
+    });
+  }
 </script>
 </body>
 </html>
