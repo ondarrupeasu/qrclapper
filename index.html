@@ -3085,17 +3085,10 @@ function renderWB(){
   const display = stepperEl.querySelector('.wb-display');
   const input = stepperEl.querySelector('.wb-input');
   const toggle = document.getElementById('wb-toggle');
-  if(state.wbCustom){
-    display.style.display = 'none';
-    input.style.display = 'block';
-    input.value = state.wb;
-    toggle.classList.add('active');
-  } else {
-    display.style.display = 'inline';
-    input.style.display = 'none';
-    display.textContent = state.wb;
-    toggle.classList.remove('active');
-  }
+  if(input) input.style.display = 'none';   // ya no se edita inline: se usa el teclado
+  display.style.display = 'inline';
+  display.textContent = state.wb;
+  toggle.classList.toggle('active', state.wbCustom);
 }
 
 function renderSessionHeader(){
@@ -3185,6 +3178,11 @@ document.querySelectorAll('.stepper-grid .stepper .step-btn').forEach(btn=>{
 document.getElementById('wb-toggle').addEventListener('click', ()=>{
   state.wbCustom = !state.wbCustom;
   renderEdit(); saveState();
+  // Al entrar en modo Kelvin, abrir el teclado numérico para escribir la cifra.
+  if(state.wbCustom){
+    openKeypad({ title:'WB (Kelvin)', value:state.wb, min:1500, max:10000, maxDigits:5,
+      onConfirm:(v)=>{ state.wb = v; renderEdit(); saveState(); } });
+  }
 });
 document.querySelector('.wb-input').addEventListener('change', (e)=>{
   let v = parseInt(e.target.value, 10);
@@ -3208,51 +3206,63 @@ document.querySelectorAll('.collapsible').forEach(h=>{
   });
 });
 
-/* ---- teclado numérico a medida para Escena/Plano/Toma ---- */
+/* ---- teclado numérico a medida (reutilizable: Escena/Plano/Toma y WB) ---- */
+let _kp = null;   // config del teclado en uso: {buffer, fresh, min, max, maxDigits, onConfirm}
+function _kpRender(){
+  const el = document.getElementById('keypad-value');
+  if(el) el.textContent = (_kp && _kp.buffer !== '') ? _kp.buffer : '0';
+}
+function openKeypad(opts){
+  // opts: {title, value, min, max, maxDigits, onConfirm(valor)}
+  const bd = document.getElementById('keypad-backdrop');
+  if(!bd) return;
+  _kp = Object.assign({ min:1, max:99999, maxDigits:5, buffer:'', fresh:true }, opts);
+  _kp.buffer = String(opts.value ?? '');
+  _kp.fresh = true;                    // el primer dígito reemplaza el valor actual
+  document.getElementById('keypad-title').textContent = opts.title || '';
+  _kpRender();
+  bd.classList.add('show');
+}
 (function(){
   function setup(){
-    const backdrop = document.getElementById('keypad-backdrop');
-    if(!backdrop) return;               // el HTML del teclado vive al final del body
-    const titleEl  = document.getElementById('keypad-title');
-    const valueEl  = document.getElementById('keypad-value');
-    const KP_KEYS  = { sc:'escena', sh:'plano', tk:'toma' };
-    let curField = null, buffer = '', fresh = true;
+    const bd = document.getElementById('keypad-backdrop');
+    if(!bd) return;                     // el HTML del teclado vive al final del body
+    const closeKp = ()=>{ bd.classList.remove('show'); _kp = null; };
 
-    const render = ()=>{ valueEl.textContent = buffer === '' ? '0' : buffer; };
-    function open(field){
-      curField = field;
-      buffer = String(state[field] ?? '');
-      fresh = true;                     // el primer dígito reemplaza el valor actual
-      titleEl.textContent = t(KP_KEYS[field]);
-      render();
-      backdrop.classList.add('show');
-    }
-    const close = ()=>{ backdrop.classList.remove('show'); curField = null; };
-    function confirm(){
-      let v = parseInt(buffer, 10);
-      if(isNaN(v) || v < 1) v = 1;      // mínimo 1, como los steppers
-      state[curField] = v;
-      renderEdit(); saveState();
-      close();
-    }
+    bd.querySelectorAll('.keypad-grid button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        if(!_kp) return;
+        const k = b.dataset.k;
+        if(k === 'clear'){ _kp.buffer = ''; _kp.fresh = false; }
+        else if(k === 'back'){ _kp.buffer = _kp.buffer.slice(0, -1); _kp.fresh = false; }
+        else { if(_kp.fresh){ _kp.buffer = ''; _kp.fresh = false; }
+               if(_kp.buffer.length < _kp.maxDigits) _kp.buffer += k; }
+        _kpRender();
+      });
+    });
+    document.getElementById('keypad-cancel').addEventListener('click', closeKp);
+    document.getElementById('keypad-ok').addEventListener('click', ()=>{
+      if(!_kp) return;
+      let v = parseInt(_kp.buffer, 10);
+      if(isNaN(v)) v = _kp.min;
+      v = Math.min(_kp.max, Math.max(_kp.min, v));
+      const cb = _kp.onConfirm;
+      closeKp();
+      if(cb) cb(v);
+    });
+    bd.addEventListener('click', (e)=>{ if(e.target === bd) closeKp(); });
 
+    // Escena/Plano/Toma: tocar el número abre el teclado
+    const KP_KEYS = { sc:'escena', sh:'plano', tk:'toma' };
     document.querySelectorAll(
       '.sst-edit[data-field="sc"] [data-val], .sst-edit[data-field="sh"] [data-val], .sst-edit[data-field="tk"] [data-val]'
     ).forEach(el=>{
-      el.addEventListener('click', ()=> open(el.closest('.sst-edit').dataset.field));
-    });
-    backdrop.querySelectorAll('.keypad-grid button').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const k = b.dataset.k;
-        if(k === 'clear'){ buffer = ''; fresh = false; }
-        else if(k === 'back'){ buffer = buffer.slice(0, -1); fresh = false; }
-        else { if(fresh){ buffer = ''; fresh = false; } if(buffer.length < 4) buffer += k; }
-        render();
+      el.addEventListener('click', ()=>{
+        const f = el.closest('.sst-edit').dataset.field;
+        openKeypad({ title:t(KP_KEYS[f]), value:state[f], min:1, maxDigits:4,
+          onConfirm:(v)=>{ state[f] = v; renderEdit(); saveState(); } });
       });
     });
-    document.getElementById('keypad-cancel').addEventListener('click', close);
-    document.getElementById('keypad-ok').addEventListener('click', confirm);
-    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) close(); });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
