@@ -165,6 +165,18 @@
   .note-input::placeholder{ color:var(--fg-dim); }
   .log-table td.td-note{ white-space:normal; min-width:150px; max-width:260px; }
 
+  /* ---- botón "Guardar toma" con estado (activo / guardado) ---- */
+  .save-take-btn{ width:100%; margin-top:10px; padding:12px; border-radius:8px;
+    font-family:var(--mono); font-weight:700; font-size:14px; letter-spacing:.06em;
+    border:1px solid var(--border); background:var(--bg-input); color:var(--fg-dim);
+    transition:background .12s, color .12s, border-color .12s; }
+  .save-take-btn.dirty{ background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+  .save-take-btn:disabled{ cursor:default; }
+  /* ---- interruptor de avance automático ---- */
+  .prod-toggle{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .prod-toggle .lbl{ margin:0; }
+  .toggle-check{ width:34px; height:20px; accent-color:var(--accent); flex:0 0 auto; cursor:pointer; }
+
   /* ---- segmentados (INT/EXT, DIA/NOCHE, SND) ---- */
   .seg-group{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .seg-group:last-child{ margin-bottom:0; }
@@ -354,6 +366,10 @@
           <label class="lbl" data-i18n="dp">Dir. de fotografía</label>
           <input type="text" id="f-dp" autocomplete="off">
         </div>
+        <div class="prod-field prod-toggle">
+          <label class="lbl" for="chk-auto-advance" data-i18n="auto_avance">Avance automático de toma</label>
+          <input type="checkbox" id="chk-auto-advance" class="toggle-check" checked>
+        </div>
       </div>
     </div>
 
@@ -493,6 +509,7 @@
       </div>
       <textarea id="f-note" class="note-input" rows="2" data-i18n-ph="notas_ph"
         placeholder="Notas de la toma…"></textarea>
+      <button id="btn-save-take-ctx" class="save-take-btn" disabled>✓ Guardado</button>
     </div>
 
 
@@ -2929,6 +2946,7 @@ const DEFAULT_STATE = {
   int:'INT', dn:'DIA',
   fps:25, mm:35, sht:50, iso:800, ap:2.8, wb:5600, wbCustom:false,
   goodTag:null, noteText:'', pendingAdvance:false,
+  autoAdvance:true, dirty:false,
   pendingGood:'', lastTakeNumber:null,
   sessionDate:null, sessionTakeCount:0, lastGoodTake:'',
   pr:'', dir:'', dp:'',
@@ -3021,6 +3039,7 @@ const I18N = {
     camara:'Cámara', tarjeta:'Tarjeta',
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
     notas:'Notas', notas_ph:'Notas de la toma…',
+    auto_avance:'Avance automático de toma', guardar_toma:'Guardar toma', guardado:'✓ Guardado',
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'WB',
     toast_no_log:'No hay tomas registradas todavía',
@@ -3039,6 +3058,7 @@ const I18N = {
     camara:'Camera', tarjeta:'Card',
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
     notas:'Notes', notas_ph:'Take notes…',
+    auto_avance:'Auto-advance take', guardar_toma:'Save take', guardado:'✓ Saved',
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
     b_diaf:'APER', b_wb:'WB',
     toast_no_log:'No takes recorded yet',
@@ -3057,6 +3077,7 @@ const I18N = {
     camara:'Kamera', tarjeta:'Txartela',
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
     notas:'Oharrak', notas_ph:'Tomaren oharrak…',
+    auto_avance:'Toma automatikoki aurreratu', guardar_toma:'Gorde toma', guardado:'✓ Gordeta',
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
     b_diaf:'DIAF', b_wb:'ZB',
     toast_no_log:'Oraindik ez dago tomarik erregistratuta',
@@ -3115,6 +3136,15 @@ function renderSessionHeader(){
 function renderEdit(){
   applyI18n();
   renderSessionHeader();
+  // Al cambiar de toma (escena/plano/toma/cámara/tarjeta) las anotaciones
+  // (buena/mala + notas) son de ESA toma: se reinician para no arrastrarlas.
+  const _idKey = `${state.cam}|${state.card}|${state.sc}|${state.sh}|${state.tk}`;
+  if(state._lastKey !== undefined && state._lastKey !== _idKey){
+    state.goodTag = null;
+    state.noteText = '';
+    state.dirty = false;
+  }
+  state._lastKey = _idKey;
   ['sc','sh','tk'].forEach(f=>{
     document.querySelector(`.sst-edit[data-field="${f}"] [data-val]`).textContent = state[f];
   });
@@ -3137,6 +3167,7 @@ function renderEdit(){
   document.getElementById('f-dir').value = state.dir || '';
   document.getElementById('f-dp').value = state.dp || '';
   document.getElementById('f-note').value = state.noteText || '';
+  document.getElementById('chk-auto-advance').checked = state.autoAdvance;
 
   const goodLabel = document.getElementById('f-good-label');
   const cardFlags = document.getElementById('card-flags');
@@ -3144,6 +3175,17 @@ function renderEdit(){
   if(goodLabel && state.lastTakeNumber){
     goodLabel.textContent = t('good_prev').replace('{n}', state.lastTakeNumber);
   }
+  updateSaveTakeBtn();
+}
+
+/* Botón "Guardar toma": activo (rojo) si hay cambios sin guardar,
+   gris con "✓ Guardado" si ya está todo en el log. */
+function updateSaveTakeBtn(){
+  const btn = document.getElementById('btn-save-take-ctx');
+  if(!btn) return;
+  btn.disabled = !state.dirty;
+  btn.classList.toggle('dirty', state.dirty);
+  btn.textContent = state.dirty ? t('guardar_toma') : t('guardado');
 }
 
 /* ---- eventos pantalla de edicion ---- */
@@ -3163,6 +3205,7 @@ document.querySelectorAll('.segmented button').forEach(btn=>{
     // goodTag: toggle (segundo clic en mismo botón lo deselecciona)
     if(field === 'goodTag'){
       state.goodTag = state.goodTag === btn.dataset.value ? null : btn.dataset.value;
+      state.dirty = true;              // hay cambios sin guardar
     } else {
       state[field] = btn.dataset.value;
     }
@@ -3222,7 +3265,16 @@ document.querySelectorAll('.collapsible').forEach(h=>{
 });
 document.getElementById('f-note').addEventListener('input', e=>{
   state.noteText = e.target.value;
+  state.dirty = true;
+  updateSaveTakeBtn();
   saveState();
+});
+document.getElementById('chk-auto-advance').addEventListener('change', e=>{
+  state.autoAdvance = e.target.checked;
+  saveState();
+});
+document.getElementById('btn-save-take-ctx').addEventListener('click', ()=>{
+  if(state.dirty) saveCurrentTake();
 });
 
 /* ---- teclado numérico a medida (reutilizable: Escena/Plano/Toma y WB) ---- */
@@ -3486,6 +3538,7 @@ function confirmRoll(clapPayload){
   state.lastTakeNumber = state.tk;
   state.sessionTakeCount = (state.sessionTakeCount || 0) + 1;
   state.pendingAdvance = true;
+  state.dirty = false;              // la toma queda registrada en el log
 
   saveState();
   renderSessionHeader();
@@ -3499,9 +3552,9 @@ window.confirmRoll = confirmRoll;
    solo cuenta como un avance. ---- */
 document.getElementById('btn-edit-icon').addEventListener('click', ()=>{
   if(state.pendingAdvance){
-    state.goodTag = null;
-    state.noteText = '';
-    state.tk += 1;
+    // El avance automático solo si está activado; en manual, la toma se
+    // sube a mano. Las anotaciones se reinician en renderEdit al cambiar toma.
+    if(state.autoAdvance) state.tk += 1;
     state.pendingAdvance = false;
     saveState();
   }
@@ -3791,8 +3844,10 @@ function saveCurrentTake(){
     state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
   }
 
+  state.dirty = false;             // ya está guardado en el log
   saveState();
   renderSessionHeader();
+  updateSaveTakeBtn();
   showToast(t('toast_take_saved'));
 }
 document.getElementById('btn-save-take').addEventListener('click', saveCurrentTake);
