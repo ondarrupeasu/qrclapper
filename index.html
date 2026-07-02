@@ -318,13 +318,6 @@
             <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
           </svg>
         </button>
-        <button id="btn-save-take" class="icon-btn" title="Guardar toma actual en el log">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
-            <path d="M17 21v-8H7v8"/>
-            <path d="M7 3v5h8"/>
-          </svg>
-        </button>
         <button id="btn-export" class="icon-btn" title="Exportar log de sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <path d="M12 16V4"/>
@@ -3850,7 +3843,6 @@ function saveCurrentTake(){
   updateSaveTakeBtn();
   showToast(t('toast_take_saved'));
 }
-document.getElementById('btn-save-take').addEventListener('click', saveCurrentTake);
 
 /* ---- histórico ---- */
 let logSortAsc = true;
