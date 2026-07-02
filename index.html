@@ -136,6 +136,27 @@
     width:38px; height:38px; border-radius:8px; font-size:20px; font-family:var(--mono); display:flex; align-items:center; justify-content:center; }
   .step-btn:active{ background:var(--border); }
 
+  /* ---- teclado numérico a medida (tocar el número de Escena/Plano/Toma) ---- */
+  .sst-edit[data-field="sc"] .val, .sst-edit[data-field="sh"] .val,
+  .sst-edit[data-field="tk"] .val{ cursor:pointer; border-bottom:1px dotted var(--fg-dim); display:inline-block; }
+  #keypad-backdrop{ position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.6);
+    display:none; align-items:flex-end; justify-content:center; }
+  #keypad-backdrop.show{ display:flex; }
+  .keypad{ width:100%; max-width:420px; background:var(--bg-panel);
+    border-top-left-radius:16px; border-top-right-radius:16px;
+    padding:14px 14px calc(14px + env(safe-area-inset-bottom)); border:1px solid var(--border); }
+  .keypad-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; padding:0 4px; }
+  .keypad-title{ font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; }
+  .keypad-value{ font-family:var(--mono); font-size:40px; font-weight:700; line-height:1; }
+  .keypad-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .keypad-grid button{ background:var(--bg-input); border:1px solid var(--border); color:var(--fg);
+    font-family:var(--mono); font-size:24px; font-weight:700; height:60px; border-radius:10px; }
+  .keypad-grid button:active{ background:var(--border); }
+  .keypad-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .keypad-actions button{ height:52px; border-radius:10px; font-size:15px; font-weight:700; border:1px solid var(--border); }
+  #keypad-cancel{ background:var(--bg-input); color:var(--fg); }
+  #keypad-ok{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
   /* ---- segmentados (INT/EXT, DIA/NOCHE, SND) ---- */
   .seg-group{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .seg-group:last-child{ margin-bottom:0; }
@@ -3187,6 +3208,56 @@ document.querySelectorAll('.collapsible').forEach(h=>{
   });
 });
 
+/* ---- teclado numérico a medida para Escena/Plano/Toma ---- */
+(function(){
+  function setup(){
+    const backdrop = document.getElementById('keypad-backdrop');
+    if(!backdrop) return;               // el HTML del teclado vive al final del body
+    const titleEl  = document.getElementById('keypad-title');
+    const valueEl  = document.getElementById('keypad-value');
+    const KP_KEYS  = { sc:'escena', sh:'plano', tk:'toma' };
+    let curField = null, buffer = '', fresh = true;
+
+    const render = ()=>{ valueEl.textContent = buffer === '' ? '0' : buffer; };
+    function open(field){
+      curField = field;
+      buffer = String(state[field] ?? '');
+      fresh = true;                     // el primer dígito reemplaza el valor actual
+      titleEl.textContent = t(KP_KEYS[field]);
+      render();
+      backdrop.classList.add('show');
+    }
+    const close = ()=>{ backdrop.classList.remove('show'); curField = null; };
+    function confirm(){
+      let v = parseInt(buffer, 10);
+      if(isNaN(v) || v < 1) v = 1;      // mínimo 1, como los steppers
+      state[curField] = v;
+      renderEdit(); saveState();
+      close();
+    }
+
+    document.querySelectorAll(
+      '.sst-edit[data-field="sc"] [data-val], .sst-edit[data-field="sh"] [data-val], .sst-edit[data-field="tk"] [data-val]'
+    ).forEach(el=>{
+      el.addEventListener('click', ()=> open(el.closest('.sst-edit').dataset.field));
+    });
+    backdrop.querySelectorAll('.keypad-grid button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const k = b.dataset.k;
+        if(k === 'clear'){ buffer = ''; fresh = false; }
+        else if(k === 'back'){ buffer = buffer.slice(0, -1); fresh = false; }
+        else { if(fresh){ buffer = ''; fresh = false; } if(buffer.length < 4) buffer += k; }
+        render();
+      });
+    });
+    document.getElementById('keypad-cancel').addEventListener('click', close);
+    document.getElementById('keypad-ok').addEventListener('click', confirm);
+    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) close(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
 /* ---- generacion del payload del QR ---- */
 function buildPayload(goodVal){
   const now = new Date();
@@ -4122,6 +4193,26 @@ document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
 });
 
 </script>
+<!-- Teclado numérico a medida (Escena/Plano/Toma) -->
+<div id="keypad-backdrop">
+  <div class="keypad" role="dialog" aria-modal="true">
+    <div class="keypad-head">
+      <span class="keypad-title" id="keypad-title">Escena</span>
+      <span class="keypad-value" id="keypad-value">1</span>
+    </div>
+    <div class="keypad-grid">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k="clear">C</button><button data-k="0">0</button><button data-k="back">⌫</button>
+    </div>
+    <div class="keypad-actions">
+      <button id="keypad-cancel">Cancelar</button>
+      <button id="keypad-ok">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Registrar el service worker (offline). No bloquea si falla.
   if ('serviceWorker' in navigator) {
