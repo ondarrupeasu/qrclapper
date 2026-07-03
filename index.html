@@ -208,6 +208,8 @@
   /* ---- fila del nombre de clip (A001C001) ---- */
   .clip-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
   .clip-lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; }
+  .clip-fmt-sel{ flex:1; min-width:0; max-width:62%; background:var(--bg-input); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; color:var(--fg); font-family:var(--mono); font-size:12px; text-align:right; }
   .clip-name{ font-family:var(--mono); font-size:18px; font-weight:700; color:var(--fg); background:var(--bg-input);
     border:1px solid var(--border); border-radius:8px; padding:6px 12px; cursor:pointer; letter-spacing:.04em; }
   .clip-name:active{ background:var(--border); }
@@ -486,6 +488,10 @@
       <div class="clip-row">
         <span class="clip-lbl" data-i18n="nombre_clip">Nombre de clip</span>
         <button id="clip-name" class="clip-name" title="Tocar para corregir el nº de clip">A001C001</button>
+      </div>
+      <div class="clip-row">
+        <span class="clip-lbl" data-i18n="formato_clip">Formato</span>
+        <select id="clip-format" class="clip-fmt-sel"></select>
       </div>
     </div>
 
@@ -3074,6 +3080,7 @@ const DEFAULT_STATE = {
   cam:'A', card:1,
   cams:['A'],                // cámaras seleccionadas para el clap simultáneo (multicámara)
   clipNos:{A:1, B:1, C:1},   // siguiente nº de clip por cámara (reel = cam+tarjeta)
+  clipFormat:'arri',         // formato del nombre de clip (preset por marca/cámara)
   collapsed:{},              // estado abierto/cerrado de las tarjetas desplegables
   sc:1, sh:1, tk:1,
   int:'INT', dn:'DIA',
@@ -3200,7 +3207,7 @@ const I18N = {
     buscar_catalogo:'🔍 Buscar en el catálogo', buscar_ph:'Marca, modelo o focal (p. ej. Cooke 32, Sony 24-70)', todas:'Todas', cine:'Cine', foto:'Foto', volver:'Volver', sugerir_optica:'✉︎ Sugerir una óptica que falta', catalogo_vacio:'Sin resultados. Prueba otra búsqueda o sugiere la óptica.', catalogo_escribe:'Escribe para buscar en el catálogo.', catalogo_focal:'¿Con qué focal (mm)?', sugerir_asunto:'Óptica para el catálogo de ClapperQR', sugerir_cuerpo:'Hola, me gustaría que añadierais esta óptica al catálogo de ClapperQR:\n\nMarca y modelo: \nFocal(es): \nEsférica/Anamórfica: \n\nGracias.', optica_anadida:'Óptica añadida a la producción',
     camara:'Cámara', tarjeta:'Tarjeta',
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
-    notas:'Notas', notas_ph:'Notas de la toma…', nombre_clip:'Nombre de clip',
+    notas:'Notas', notas_ph:'Notas de la toma…', nombre_clip:'Nombre de clip', formato_clip:'Formato',
     auto_avance:'Avance automático de toma', guardar_toma:'Guardar', guardado:'✓ Guardado',
     cancelar:'Cancelar', aceptar:'Aceptar', exportar_como:'¿Qué formato quieres exportar?', todos:'Los tres',
     auto_on:'¿Activar el avance automático de toma?\n\nLa toma subirá sola tras cada claqueta.',
@@ -3226,7 +3233,7 @@ const I18N = {
     buscar_catalogo:'🔍 Search the catalog', buscar_ph:'Brand, model or focal (e.g. Cooke 32, Sony 24-70)', todas:'All', cine:'Cine', foto:'Photo', volver:'Back', sugerir_optica:'✉︎ Suggest a missing lens', catalogo_vacio:'No results. Try another search or suggest the lens.', catalogo_escribe:'Type to search the catalog.', catalogo_focal:'Which focal length (mm)?', sugerir_asunto:'Lens for the ClapperQR catalog', sugerir_cuerpo:'Hi, I would like this lens added to the ClapperQR catalog:\n\nBrand and model: \nFocal length(s): \nSpherical/Anamorphic: \n\nThanks.', optica_anadida:'Lens added to production',
     camara:'Camera', tarjeta:'Card',
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
-    notas:'Notes', notas_ph:'Take notes…', nombre_clip:'Clip name',
+    notas:'Notes', notas_ph:'Take notes…', nombre_clip:'Clip name', formato_clip:'Format',
     auto_avance:'Auto-advance take', guardar_toma:'Save', guardado:'✓ Saved',
     cancelar:'Cancel', aceptar:'OK', exportar_como:'Which format to export?', todos:'All three',
     auto_on:'Turn ON auto-advance take?\n\nThe take will increase automatically after each clap.',
@@ -3252,7 +3259,7 @@ const I18N = {
     buscar_catalogo:'🔍 Bilatu katalogoan', buscar_ph:'Marka, modeloa edo fokua (adib. Cooke 32, Sony 24-70)', todas:'Denak', cine:'Zinema', foto:'Argazkia', volver:'Itzuli', sugerir_optica:'✉︎ Iradoki falta den optika', catalogo_vacio:'Emaitzarik ez. Saiatu beste bilaketa batekin edo iradoki optika.', catalogo_escribe:'Idatzi katalogoan bilatzeko.', catalogo_focal:'Zein fokurekin (mm)?', sugerir_asunto:'Optika ClapperQR katalogorako', sugerir_cuerpo:'Kaixo, optika hau ClapperQR katalogoan gehitzea nahiko nuke:\n\nMarka eta modeloa: \nFokua(k): \nEsferikoa/Anamorfikoa: \n\nEskerrik asko.', optica_anadida:'Optika ekoizpenari gehituta',
     camara:'Kamera', tarjeta:'Txartela',
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
-    notas:'Oharrak', notas_ph:'Tomaren oharrak…', nombre_clip:'Klip izena',
+    notas:'Oharrak', notas_ph:'Tomaren oharrak…', nombre_clip:'Klip izena', formato_clip:'Formatua',
     auto_avance:'Toma automatikoki aurreratu', guardar_toma:'Gorde', guardado:'✓ Gordeta',
     cancelar:'Utzi', aceptar:'Ados', exportar_como:'Zein formatu esportatu?', todos:'Hirurak',
     auto_on:'Tomaren aurrerapen automatikoa AKTIBATU?\n\nToma bakoitzean automatikoki igoko da klaketaren ostean.',
@@ -3357,6 +3364,8 @@ function renderEdit(){
   setSegmentedCam();
   const nCams = getCams().length;
   document.getElementById('clip-name').textContent = formatClipName() + (nCams > 1 ? '  +' + (nCams - 1) : '');
+  const cfSel = document.getElementById('clip-format');
+  if(cfSel) cfSel.value = state.clipFormat || 'arri';
 
   setSegmented('goodTag', state.goodTag);
 
@@ -3391,15 +3400,33 @@ function updateAutoBadge(){
   if(b) b.classList.toggle('on', !!state.autoAdvance);
 }
 
-/* Nombre de clip previsto: reel (cámara + tarjeta) + C + nº de clip (por cámara).
-   p.ej. cámara A, tarjeta 1, clip 1 -> A001C001. Sin extensión (la resuelve
-   Desktop del archivo real). */
+/* Formatos de nombre de clip por marca/cámara. Cada preset construye el nombre
+   a partir de: c = letra de cámara, r = nº de tarjeta/reel, k = nº de clip.
+   La fecha (Blackmagic) sale de la sesión. Sin extensión (la resuelve Desktop). */
+function _clipDate(){ return (state.sessionDate || new Date().toISOString().slice(0,10)).replace(/-/g,''); }
+const CLIP_FORMATS = {
+  arri:    { label: 'ARRI · RED · Sony · Canon (A001C001)', fn: (c,r,k)=> c + String(r).padStart(3,'0') + 'C' + String(k).padStart(3,'0') },
+  red_us:  { label: 'RED · Blackmagic (A001_C001)',          fn: (c,r,k)=> c + String(r).padStart(3,'0') + '_C' + String(k).padStart(3,'0') },
+  sony_t:  { label: 'Sony Title (C0001)',                    fn: (c,r,k)=> 'C' + String(k).padStart(4,'0') },
+  bmd_date:{ label: 'Blackmagic + fecha (A001_20260703_C001)', fn: (c,r,k)=> c + String(r).padStart(3,'0') + '_' + _clipDate() + '_C' + String(k).padStart(3,'0') },
+  pana:    { label: 'Panasonic (P0000001)',                  fn: (c,r,k)=> 'P' + String(k).padStart(7,'0') },
+};
 function formatClipName(cam){
   cam = cam || state.cam || 'A';
-  const reel = String(state.card).padStart(3, '0');
-  const clip = String((state.clipNos && state.clipNos[cam]) || 1).padStart(3, '0');
-  return `${cam}${reel}C${clip}`;
+  const reel = state.card;
+  const clip = (state.clipNos && state.clipNos[cam]) || 1;
+  const fmt = CLIP_FORMATS[state.clipFormat] || CLIP_FORMATS.arri;
+  return fmt.fn(cam, reel, clip);
 }
+// Poblar el selector de formato de clip y reaccionar al cambio.
+(function(){
+  const sel = document.getElementById('clip-format');
+  if(!sel) return;
+  Object.entries(CLIP_FORMATS).forEach(([id, f])=>{
+    const o = document.createElement('option'); o.value = id; o.textContent = f.label; sel.appendChild(o);
+  });
+  sel.addEventListener('change', ()=>{ state.clipFormat = sel.value; renderEdit(); saveState(); });
+})();
 
 /* ---- multicámara: lista de cámaras seleccionadas (orden A,B,C, nunca vacía) ---- */
 const CAM_ORDER = ['A','B','C'];
