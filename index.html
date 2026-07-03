@@ -117,12 +117,12 @@
   .sst-edit-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   .sst-edit-grid-2{ grid-template-columns:1fr 1fr; }
   .seg-edit{ background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
-    padding:8px 6px; text-align:center; }
+    padding:8px 10px; text-align:left; }
   .seg-edit .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; margin-bottom:6px; }
   .cam-segmented{ height:38px; margin-top:2px; }
   .cam-segmented button{ font-weight:700; font-size:20px; padding:0; color:var(--fg); }
   .sst-edit{ background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
-    padding:8px 6px; text-align:center; position:relative; }
+    padding:8px 10px; text-align:left; position:relative; }
   /* Badge AUTO (avance automático) en la esquina de la tarjeta de Toma */
   .auto-badge{ position:absolute; top:3px; right:3px; font-family:var(--mono); font-size:9px;
     letter-spacing:.04em; padding:2px 5px; border-radius:5px; border:1px solid var(--border);
@@ -338,7 +338,7 @@
       </div>
       <div class="session-actions">
         <button id="btn-calibrate" class="icon-btn" title="Calibrar latencia Bluetooth">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          <svg id="btn-calibrate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -638,7 +638,12 @@
     <div class="badges-bottom" id="badges-bottom"></div>
   </div>
 
-  <button id="btn-edit-icon" class="icon-btn edit-icon">&#9998;</button>
+  <button id="btn-edit-icon" class="icon-btn edit-icon" title="Volver a edición">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>
+    </svg>
+  </button>
 
   <div id="countdown-overlay" class="overlay">
     <div class="cd-leader">
@@ -3443,6 +3448,8 @@ function buildPayload(goodVal){
 const ICON_LOG = `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>`;
 // SVG icono edición (lápiz)
 const ICON_EDIT = `<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>`;
+// SVG icono calibrar (altavoz + ondas)
+const ICON_CALIB = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
 
 function switchScreen(name){
   state.view = name;
@@ -3453,9 +3460,12 @@ function switchScreen(name){
   // shared header: ocultar cuando display, mostrar en edit/log/calibrate
   document.getElementById('shared-header').style.display = (name === 'display') ? 'none' : '';
   document.getElementById('shared-header').classList.toggle('log-mode', name === 'log' || name === 'calibrate');
-  // cambiar icono del botón log/edit
+  // cambiar icono del botón log/edit (en la pantalla histórico → editar)
   const icon = document.getElementById('btn-log-icon');
   if(icon) icon.innerHTML = (name === 'log') ? ICON_EDIT : ICON_LOG;
+  // y el de calibrar → editar cuando estamos en calibrar (mismo comportamiento)
+  const calIcon = document.getElementById('btn-calibrate-icon');
+  if(calIcon) calIcon.innerHTML = (name === 'calibrate') ? ICON_EDIT : ICON_CALIB;
   if(name === 'log') renderLog();
   if(name === 'calibrate') calibInitScreen();
   saveState();
