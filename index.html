@@ -494,6 +494,12 @@
             <button data-value="NOCHE" data-i18n="noche">NOCHE</button>
           </div>
         </div>
+        <div class="seg-group">
+          <div class="segmented" data-field="lensType">
+            <button data-value="sph" data-i18n="esferica">Esférica</button>
+            <button data-value="ana" data-i18n="anamorfica">Anamórfica</button>
+          </div>
+        </div>
         <div class="stepper-grid" style="margin-top:8px;">
           <div class="stepper" data-field="fps">
             <div class="lbl">FPS</div>
@@ -508,6 +514,14 @@
             <div class="row">
               <button class="step-btn" data-dir="-1">&minus;</button>
               <div class="val" data-val>35</div>
+              <button class="step-btn" data-dir="1">+</button>
+            </div>
+          </div>
+          <div class="stepper" data-field="squeeze" id="stepper-squeeze">
+            <div class="lbl" data-i18n="squeeze">Squeeze</div>
+            <div class="row">
+              <button class="step-btn" data-dir="-1">&minus;</button>
+              <div class="val" data-val>2x</div>
               <button class="step-btn" data-dir="1">+</button>
             </div>
           </div>
@@ -2993,6 +3007,7 @@ var qrcode = function() {
 const FPS_LIST = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60, 100, 120];
 const SHUTTER_LIST = [24, 25, 30, 48, 50, 60, 96, 100, 120, 125, 180, 200, 250, 500, 1000];
 const SHUTTER_ANGLE_LIST = [45, 72, 90, 120, 144, 172.8, 180, 270, 360];
+const SQUEEZE_LIST = [1.33, 1.5, 1.8, 2];
 const ISO_LIST = [100,200,400,500,640,800,1000,1250,1600,2000,2500,3200,4000,5000,6400,8000,10000,12800,16000,25600];
 const APERTURE_LIST = [1.0,1.1,1.2,1.4,1.6,1.8,2,2.2,2.5,2.8,3.2,3.5,4,4.5,5.0,5.6,6.3,7.1,8,9,10,11,13,14,16,18,20,22,25,29,32];
 const WB_LIST = [2700,3000,3200,3800,4300,5000,5600,6500,7500];
@@ -3004,7 +3019,7 @@ const DEFAULT_STATE = {
   collapsed:{},              // estado abierto/cerrado de las tarjetas desplegables
   sc:1, sh:1, tk:1,
   int:'INT', dn:'DIA',
-  fps:24, mm:35, sht:50, shtDeg:180, shtMode:'deg', iso:800, ap:2.8, apMode:'T', wb:5600, wbCustom:false,
+  fps:24, mm:35, lensType:'sph', squeeze:2, sht:50, shtDeg:180, shtMode:'deg', iso:800, ap:2.8, apMode:'T', wb:5600, wbCustom:false,
   goodTag:null, noteText:'', pendingAdvance:false,
   autoAdvance:true, dirty:false, negativeData:false,
   pendingGood:'', lastTakeNumber:null,
@@ -3049,6 +3064,11 @@ function formatApFull(v, mode){ return apUnit(mode) + formatAp(v); }
 // Obturador en grados (180°, estándar de cine) o en fracción (1/50).
 function formatShutter(sht, shtDeg, mode){
   return mode === 'deg' ? (String(shtDeg) + '°') : ('1/' + sht);
+}
+// Óptica: esférica muestra solo el foco (50mm); anamórfica añade el squeeze (50mm 2x).
+function formatSqueeze(v){ return v + 'x'; }
+function formatLens(mm, lensType, squeeze){
+  return mm + 'mm' + (lensType === 'ana' ? ' ' + formatSqueeze(squeeze) : '');
 }
 function formatCard(v){ return String(v).padStart(2,'0'); }
 
@@ -3109,6 +3129,7 @@ const I18N = {
     dia:'DÍA', noche:'NOCHE',
     ajustes:'Ajustes',
     lente:'Lente (mm)', obturador:'Obturador', diafragma:'Diafragma', wb:'Balance de blancos (K)',
+    esferica:'Esférica', anamorfica:'Anamórfica', squeeze:'Squeeze',
     camara:'Cámara', tarjeta:'Tarjeta',
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
     notas:'Notas', notas_ph:'Notas de la toma…', nombre_clip:'Nombre de clip',
@@ -3131,6 +3152,7 @@ const I18N = {
     dia:'DAY', noche:'NIGHT',
     ajustes:'Settings',
     lente:'Lens (mm)', obturador:'Shutter', diafragma:'Aperture', wb:'White balance (K)',
+    esferica:'Spherical', anamorfica:'Anamorphic', squeeze:'Squeeze',
     camara:'Camera', tarjeta:'Card',
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
     notas:'Notes', notas_ph:'Take notes…', nombre_clip:'Clip name',
@@ -3153,6 +3175,7 @@ const I18N = {
     dia:'EGUNA', noche:'GAUA',
     ajustes:'Ezarpenak',
     lente:'Lentea (mm)', obturador:'Obturadorea', diafragma:'Diafragma', wb:'Zuri balantzea (K)',
+    esferica:'Esferikoa', anamorfica:'Anamorfikoa', squeeze:'Squeeze',
     camara:'Kamera', tarjeta:'Txartela',
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
     notas:'Oharrak', notas_ph:'Tomaren oharrak…', nombre_clip:'Klip izena',
@@ -3235,6 +3258,9 @@ function renderEdit(){
   });
   setSegmented('int', state.int);
   setSegmented('dn', state.dn);
+  setSegmented('lensType', state.lensType);
+  document.querySelector('.stepper[data-field="squeeze"] [data-val]').textContent = formatSqueeze(state.squeeze);
+  document.getElementById('stepper-squeeze').style.display = state.lensType === 'ana' ? '' : 'none';
 
   document.querySelector('.stepper[data-field="fps"] [data-val]').textContent = formatFps(state.fps);
   document.querySelector('.stepper[data-field="mm"] [data-val]').textContent = state.mm;
@@ -3356,6 +3382,7 @@ document.querySelectorAll('.stepper-grid .stepper .step-btn').forEach(btn=>{
     switch(field){
       case 'fps': state.fps = clampList(FPS_LIST, state.fps, dir); break;
       case 'mm':  state.mm  = clampNum(state.mm, dir, 1, 8, 300); break;
+      case 'squeeze': state.squeeze = clampList(SQUEEZE_LIST, state.squeeze, dir); break;
       case 'sht':
         if(state.shtMode === 'deg') state.shtDeg = clampList(SHUTTER_ANGLE_LIST, state.shtDeg, dir);
         else state.sht = clampList(SHUTTER_LIST, state.sht, dir);
@@ -3524,7 +3551,8 @@ function buildPayload(goodVal){
     sc:state.sc, sh:state.sh, tk:state.tk,
     cam:state.cam, card:state.card,
     int:state.int, dn:state.dn,
-    fps:state.fps, mm:state.mm, sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
+    fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
+    sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
     iso:state.iso, ap:state.ap, apMode:state.apMode, wb:state.wb,
     good:goodVal
   };
@@ -3622,7 +3650,8 @@ function buildFlashPayload(){
     sc:state.sc, sh:state.sh, tk:state.tk,
     cam:state.cam, card:state.card, clip:formatClipName(),
     int:state.int, dn:state.dn,
-    fps:state.fps, mm:state.mm, sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
+    fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
+    sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
     iso:state.iso, ap:state.ap, apMode:state.apMode, wb:state.wb
   };
 }
@@ -3667,7 +3696,7 @@ function renderDataView(payload){
     [t('b_cam'), `${payload.cam || '–'}·${formatCard(payload.card)}`],
     [t('b_esc'), `${payload.int}·${payload.dn}`],
     [t('b_fps'), formatFps(payload.fps)],
-    [t('b_lente'), `${payload.mm}mm`],
+    [t('b_lente'), formatLens(payload.mm, payload.lensType || 'sph', payload.squeeze)],
     [t('b_obt'), formatShutter(payload.sht, payload.shtDeg, payload.shtMode || 'frac')],
     [t('b_iso'), payload.iso],
     [t('b_diaf'), formatApFull(payload.ap, payload.apMode || 'f')],
@@ -3738,7 +3767,8 @@ function confirmRoll(clapPayload){
     cam: state.cam, card: state.card,
     clip: formatClipName(),
     int: state.int, dn: state.dn,
-    fps: state.fps, mm: state.mm, sht: state.sht, shtDeg: state.shtDeg, shtMode: state.shtMode,
+    fps: state.fps, mm: state.mm, lensType: state.lensType, squeeze: state.squeeze,
+    sht: state.sht, shtDeg: state.shtDeg, shtMode: state.shtMode,
     iso: state.iso, ap: state.ap, apMode: state.apMode, wb: state.wb
   });
 
@@ -4025,7 +4055,7 @@ function playClap(){
 
 /* ---- exportar log de sesion (CSV via Web Share API, con fallback de descarga) ---- */
 function buildCSV(){
-  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','clip','int','dn','fps','mm','sht','shtDeg','shtMode','iso','ap','apMode','wb','toma_buena','notes','good_enviado'];
+  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','clip','int','dn','fps','mm','lensType','squeeze','sht','shtDeg','shtMode','iso','ap','apMode','wb','toma_buena','notes','good_enviado'];
   const lines = [];
 
   const meta = [
@@ -4153,7 +4183,7 @@ function renderLog(){
     const good = e.toma_buena === 'buena' ? '✓' : e.toma_buena === 'mala' ? '✗' : '—';
     const cls  = e.toma_buena === 'buena' ? 'row-buena' : e.toma_buena === 'mala' ? 'row-mala' : '';
     const fps  = e.fps != null ? (Number.isInteger(e.fps) ? e.fps : parseFloat(e.fps).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')) : '—';
-    const mm   = e.mm   != null ? e.mm + 'mm' : '—';
+    const mm   = e.mm   != null ? formatLens(e.mm, e.lensType || 'sph', e.squeeze) : '—';
     const sht  = (e.shtMode === 'deg' && e.shtDeg != null) ? e.shtDeg + '°'
                : (e.sht != null ? '1/' + e.sht : '—');
     const iso  = e.iso  != null ? e.iso : '—';
