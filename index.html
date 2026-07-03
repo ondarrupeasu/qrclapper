@@ -140,6 +140,14 @@
   .confirm-actions button{ height:46px; border-radius:8px; font-size:14px; font-weight:700; border:1px solid var(--border); }
   #confirm-cancel{ background:var(--bg-input); color:var(--fg); }
   #confirm-ok{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  /* selector de formato de exportación */
+  .export-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .export-opt{ height:52px; border-radius:8px; font-family:var(--mono); font-weight:700; font-size:15px;
+    border:1px solid var(--border); background:var(--bg-input); color:var(--fg); cursor:pointer; }
+  .export-opt:active{ background:var(--border); }
+  .export-opt.export-all{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .export-cancel-btn{ width:100%; height:44px; border-radius:8px; font-size:14px; font-weight:700;
+    border:1px solid var(--border); background:transparent; color:var(--fg-dim); cursor:pointer; }
   .sst-edit .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; }
   .prod-field{ margin-bottom:10px; }
   .prod-field:last-child{ margin-bottom:0; }
@@ -3098,7 +3106,7 @@ const I18N = {
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
     notas:'Notas', notas_ph:'Notas de la toma…', nombre_clip:'Nombre de clip',
     auto_avance:'Avance automático de toma', guardar_toma:'Guardar', guardado:'✓ Guardado',
-    cancelar:'Cancelar', aceptar:'Aceptar',
+    cancelar:'Cancelar', aceptar:'Aceptar', exportar_como:'¿Qué formato quieres exportar?', todos:'Los tres',
     auto_on:'¿Activar el avance automático de toma?\n\nLa toma subirá sola tras cada claqueta.',
     auto_off:'¿Desactivar el avance automático de toma?\n\nTendrás que subir la toma a mano (modo multicámara).',
     b_cam:'CAM', b_esc:'ESC', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
@@ -3120,7 +3128,7 @@ const I18N = {
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
     notas:'Notes', notas_ph:'Take notes…', nombre_clip:'Clip name',
     auto_avance:'Auto-advance take', guardar_toma:'Save', guardado:'✓ Saved',
-    cancelar:'Cancel', aceptar:'OK',
+    cancelar:'Cancel', aceptar:'OK', exportar_como:'Which format to export?', todos:'All three',
     auto_on:'Turn ON auto-advance take?\n\nThe take will increase automatically after each clap.',
     auto_off:'Turn OFF auto-advance take?\n\nYou will advance the take manually (multi-camera mode).',
     b_cam:'CAM', b_esc:'LOC', b_fps:'FPS', b_lente:'LENS', b_obt:'SHUT', b_iso:'ISO',
@@ -3142,7 +3150,7 @@ const I18N = {
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
     notas:'Oharrak', notas_ph:'Tomaren oharrak…', nombre_clip:'Klip izena',
     auto_avance:'Toma automatikoki aurreratu', guardar_toma:'Gorde', guardado:'✓ Gordeta',
-    cancelar:'Utzi', aceptar:'Ados',
+    cancelar:'Utzi', aceptar:'Ados', exportar_como:'Zein formatu esportatu?', todos:'Hirurak',
     auto_on:'Tomaren aurrerapen automatikoa AKTIBATU?\n\nToma bakoitzean automatikoki igoko da klaketaren ostean.',
     auto_off:'Tomaren aurrerapen automatikoa DESAKTIBATU?\n\nToma eskuz igo beharko duzu (kamera anitzeko modua).',
     b_cam:'KAM', b_esc:'KOK', b_fps:'FPS', b_lente:'LENTE', b_obt:'OBT', b_iso:'ISO',
@@ -4194,29 +4202,25 @@ function showToast(msg){
   setTimeout(()=> t.classList.remove('show'), 2000);
 }
 
-async function exportLog(){
-  if(state.log.length === 0){
-    showToast(t('toast_no_log'));
-    return;
-  }
-  const date = new Date().toISOString().slice(0,10);
-  const files = [
-    new File([buildCSV()],  `claqueta_${date}.csv`,  {type:'text/csv'}),
-    new File([buildJSON()], `claqueta_${date}.json`, {type:'application/json'}),
-    new File([buildText()], `claqueta_${date}.txt`,  {type:'text/plain'}),
-  ];
+function makeExportFile(fmt, date){
+  if(fmt === 'csv')  return new File([buildCSV()],  `claqueta_${date}.csv`,  {type:'text/csv'});
+  if(fmt === 'json') return new File([buildJSON()], `claqueta_${date}.json`, {type:'application/json'});
+  return new File([buildText()], `claqueta_${date}.txt`, {type:'text/plain'});
+}
+async function doExport(fmt){
+  const date  = new Date().toISOString().slice(0,10);
+  const fmts  = (fmt === 'all') ? ['csv','json','txt'] : [fmt];
+  const files = fmts.map(f => makeExportFile(f, date));
 
-  // Hoja de compartir con los tres formatos a la vez (CSV importa a Desktop,
-  // JSON es el canónico, TXT para leer/enviar rápido).
   if(navigator.canShare && window.File){
     try{
       if(navigator.canShare({files})){
         await navigator.share({files, title:'Log de sesión'});
         return;
       }
-    }catch(e){ /* cancelado o no soportado: cae al fallback de descarga */ }
+    }catch(e){ /* cancelado o no soportado: cae al fallback de descarga */ return; }
   }
-  // Fallback: descargar cada archivo por separado.
+  // Fallback: descargar cada archivo.
   files.forEach(f=>{
     const url = URL.createObjectURL(f);
     const a = document.createElement('a');
@@ -4225,7 +4229,27 @@ async function exportLog(){
     URL.revokeObjectURL(url);
   });
 }
+// El botón de exportar abre un selector de formato (CSV / JSON / Texto / Todos).
+function exportLog(){
+  if(state.log.length === 0){ showToast(t('toast_no_log')); return; }
+  const bd = document.getElementById('export-backdrop');
+  if(bd) bd.classList.add('show'); else doExport('all');
+}
 document.getElementById('btn-export').addEventListener('click', exportLog);
+(function(){
+  function setup(){
+    const bd = document.getElementById('export-backdrop');
+    if(!bd) return;
+    const close = ()=> bd.classList.remove('show');
+    bd.querySelectorAll('.export-opt').forEach(b=>{
+      b.addEventListener('click', ()=>{ close(); doExport(b.dataset.fmt); });
+    });
+    document.getElementById('export-cancel').addEventListener('click', close);
+    bd.addEventListener('click', (e)=>{ if(e.target === bd) close(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
 
 /* ---- reiniciar sesion: vuelve a DEFAULT_STATE preservando el idioma,
    borra localStorage y vuelve a la pantalla de edicion. ---- */
@@ -4538,6 +4562,20 @@ document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
 });
 
 </script>
+<!-- Selector de formato al exportar -->
+<div id="export-backdrop" class="modal-backdrop">
+  <div class="confirm-box" role="dialog" aria-modal="true">
+    <div class="confirm-msg" data-i18n="exportar_como">¿Qué formato quieres exportar?</div>
+    <div class="export-grid">
+      <button class="export-opt" data-fmt="csv">CSV</button>
+      <button class="export-opt" data-fmt="json">JSON</button>
+      <button class="export-opt" data-fmt="txt">TXT</button>
+      <button class="export-opt export-all" data-fmt="all" data-i18n="todos">Los tres</button>
+    </div>
+    <button id="export-cancel" class="export-cancel-btn" data-i18n="cancelar">Cancelar</button>
+  </div>
+</div>
+
 <!-- Modal de confirmación (avance automático, etc.) -->
 <div id="confirm-backdrop" class="modal-backdrop">
   <div class="confirm-box" role="dialog" aria-modal="true">
