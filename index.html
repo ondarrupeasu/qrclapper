@@ -3184,15 +3184,18 @@ function renderSessionHeader(){
 function renderEdit(){
   applyI18n();
   renderSessionHeader();
-  // Al cambiar de toma (escena/plano/toma/cámara/tarjeta) las anotaciones
-  // (buena/mala + notas) son de ESA toma: se reinician para no arrastrarlas.
-  const _idKey = `${state.cam}|${state.card}|${state.sc}|${state.sh}|${state.tk}`;
-  if(state._lastKey !== undefined && state._lastKey !== _idKey){
-    state.goodTag = null;
-    state.noteText = '';
-    state.dirty = false;
+  // La tarjeta de flags valora la ÚLTIMA toma rodada (lastTakeNumber), NO la
+  // toma actual (que en modo auto ya avanzó). Si no hay cambios sin guardar,
+  // reflejar la valoración/nota ya guardadas de esa toma.
+  if(!state.dirty){
+    let row = null;
+    if(state.lastTakeNumber != null){
+      const k = takenKey(state.cam, state.card, state.sc, state.sh, state.lastTakeNumber);
+      row = state.log.find(e => takenKey(e.cam, e.card, e.sc, e.sh, e.tk) === k);
+    }
+    state.goodTag  = row ? (row.toma_buena || null) : null;
+    state.noteText = row ? (row.notes || '') : '';
   }
-  state._lastKey = _idKey;
   ['sc','sh','tk'].forEach(f=>{
     document.querySelector(`.sst-edit[data-field="${f}"] [data-val]`).textContent = state[f];
   });
@@ -3635,25 +3638,27 @@ function upsertLogEntry(entry){
 }
 
 function confirmRoll(clapPayload){
-  const goodToUse = state.pendingGood || '';
-
+  // Si había una valoración/nota sin guardar de la toma anterior, guardarla
+  // antes de avanzar lastTakeNumber (si no, se perdería).
+  if(state.dirty) saveCurrentTake();
+  // Registra la toma rodada. buena/mala y notas NO se ponen aquí (aún no se
+  // sabe si es buena); se valoran después con la tarjeta de flags, que guarda
+  // en la fila de esta toma. Al repetir el clap sobre la misma toma, upsert
+  // conserva la valoración previa (no incluimos toma_buena/notes en la entrada).
   upsertLogEntry({
     ts: new Date().toISOString(),
     clap_ts: clapPayload ? clapPayload.ts : '',
     sc: state.sc, sh: state.sh, tk: state.tk,
     cam: state.cam, card: state.card,
     int: state.int, dn: state.dn,
-    fps: state.fps, mm: state.mm, sht: state.sht, iso: state.iso, ap: state.ap, wb: state.wb,
-    toma_buena: state.goodTag, notes: state.noteText || '', good_enviado: goodToUse
+    fps: state.fps, mm: state.mm, sht: state.sht, iso: state.iso, ap: state.ap, wb: state.wb
   });
 
-  state.pendingGood = state.goodTag === 'buena' ? takenKey(state.cam, state.card, state.sc, state.sh, state.tk) : (state.goodTag === 'mala' ? 'mala' : '');
-  if(state.goodTag === 'buena'){
-    state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
-  }
   state.lastTakeNumber = state.tk;
   state.pendingAdvance = true;
-  state.dirty = false;              // la toma queda registrada en el log
+  state.goodTag = null;             // la nueva toma aún no está valorada
+  state.noteText = '';
+  state.dirty = false;
 
   saveState();
   renderSessionHeader();
@@ -3997,20 +4002,21 @@ function buildText(){
    Si ya existe una entrada para esta toma (sc-sh-tk-cam-card, p.ej.
    porque se hizo confirmRoll), se actualiza en lugar de duplicarla. ---- */
 function saveCurrentTake(){
-  // Sin clap_ts: upsertLogEntry conserva el clap real si ya lo hubo.
+  // La valoración es para la ÚLTIMA toma rodada (lastTakeNumber), no la actual.
+  // Solo actualizamos buena/mala + notas; upsertLogEntry conserva técnicos y clap.
+  const targetTk = state.lastTakeNumber != null ? state.lastTakeNumber : state.tk;
+  const key = takenKey(state.cam, state.card, state.sc, state.sh, targetTk);
   upsertLogEntry({
     ts: new Date().toISOString(),
-    sc: state.sc, sh: state.sh, tk: state.tk,
+    sc: state.sc, sh: state.sh, tk: targetTk,
     cam: state.cam, card: state.card,
-    int: state.int, dn: state.dn,
-    fps: state.fps, mm: state.mm, sht: state.sht, iso: state.iso, ap: state.ap, wb: state.wb,
     toma_buena: state.goodTag,
     notes: state.noteText || '',
-    good_enviado: state.goodTag === 'buena' ? takenKey(state.cam, state.card, state.sc, state.sh, state.tk) : (state.goodTag === 'mala' ? 'mala' : '')
+    good_enviado: state.goodTag === 'buena' ? key : (state.goodTag === 'mala' ? 'mala' : '')
   });
 
   if(state.goodTag === 'buena'){
-    state.lastGoodTake = `${state.sc}-${state.sh}-${state.tk}`;
+    state.lastGoodTake = `${state.sc}-${state.sh}-${targetTk}`;
   }
 
   state.dirty = false;             // ya está guardado en el log
