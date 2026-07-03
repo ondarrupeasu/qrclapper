@@ -3015,6 +3015,7 @@ const WB_LIST = [2700,3000,3200,3800,4300,5000,5600,6500,7500];
 /* ---- estado persistente ---- */
 const DEFAULT_STATE = {
   cam:'A', card:1,
+  cams:['A'],                // cámaras seleccionadas para el clap simultáneo (multicámara)
   clipNos:{A:1, B:1, C:1},   // siguiente nº de clip por cámara (reel = cam+tarjeta)
   collapsed:{},              // estado abierto/cerrado de las tarjetas desplegables
   sc:1, sh:1, tk:1,
@@ -3039,6 +3040,12 @@ function loadState(){
   // Object.assign es superficial: dar copias propias a los objetos/arrays
   // anidados para no mutar DEFAULT_STATE.
   s.clipNos = Object.assign({A:1, B:1, C:1}, s.clipNos);
+  // multicámara: normalizar la lista de cámaras seleccionadas (orden A,B,C; nunca vacía)
+  const CAMS = ['A','B','C'];
+  let cams = Array.isArray(s.cams) ? s.cams.filter(c => CAMS.includes(c)) : [];
+  if(!cams.length) cams = [s.cam || 'A'];
+  s.cams = CAMS.filter(c => cams.includes(c));
+  s.cam = s.cams[0];         // la principal (dirige nombre de clip y valoración mostrados)
   s.collapsed = Object.assign({}, s.collapsed);
   s.log = Array.isArray(s.log) ? s.log.slice() : [];
   return s;
@@ -3272,8 +3279,9 @@ function renderEdit(){
   renderWB();
 
   document.querySelector('.sst-edit[data-field="card"] [data-val]').textContent = formatCard(state.card);
-  setSegmented('cam', state.cam);
-  document.getElementById('clip-name').textContent = formatClipName();
+  setSegmentedCam();
+  const nCams = getCams().length;
+  document.getElementById('clip-name').textContent = formatClipName() + (nCams > 1 ? '  +' + (nCams - 1) : '');
 
   setSegmented('goodTag', state.goodTag);
 
@@ -3311,11 +3319,36 @@ function updateAutoBadge(){
 /* Nombre de clip previsto: reel (cámara + tarjeta) + C + nº de clip (por cámara).
    p.ej. cámara A, tarjeta 1, clip 1 -> A001C001. Sin extensión (la resuelve
    Desktop del archivo real). */
-function formatClipName(){
-  const cam  = state.cam || 'A';
+function formatClipName(cam){
+  cam = cam || state.cam || 'A';
   const reel = String(state.card).padStart(3, '0');
   const clip = String((state.clipNos && state.clipNos[cam]) || 1).padStart(3, '0');
   return `${cam}${reel}C${clip}`;
+}
+
+/* ---- multicámara: lista de cámaras seleccionadas (orden A,B,C, nunca vacía) ---- */
+const CAM_ORDER = ['A','B','C'];
+function getCams(){
+  const sel = (Array.isArray(state.cams) && state.cams.length) ? state.cams : [state.cam || 'A'];
+  return CAM_ORDER.filter(c => sel.includes(c));
+}
+function setCams(arr){
+  let sel = CAM_ORDER.filter(c => arr.includes(c));
+  if(!sel.length) sel = ['A'];
+  state.cams = sel;
+  state.cam = sel[0];        // principal
+}
+function setSegmentedCam(){
+  const sel = getCams();
+  document.querySelectorAll('.segmented[data-field="cam"] button').forEach(b=>{
+    b.classList.toggle('active', sel.includes(b.dataset.value));
+  });
+}
+// Mapa cámara -> nombre de clip para todas las seleccionadas (va en el QR).
+function clipMap(){
+  const m = {};
+  getCams().forEach(c => m[c] = formatClipName(c));
+  return m;
 }
 
 /* ---- diálogo de confirmación genérico (Cancelar / Aceptar) ---- */
@@ -3350,10 +3383,10 @@ document.querySelectorAll('.sst-edit .step-btn').forEach(btn=>{
     const field = btn.closest('.sst-edit').dataset.field;
     const dir = parseInt(btn.dataset.dir, 10);
     state[field] = Math.max(1, state[field] + dir);
-    // Cambiar de tarjeta = nuevo reel: el clip de esta cámara vuelve a 1.
+    // Cambiar de tarjeta = nuevo reel: el clip de las cámaras seleccionadas vuelve a 1.
     if(field === 'card'){
       if(!state.clipNos) state.clipNos = {A:1, B:1, C:1};
-      state.clipNos[state.cam] = 1;
+      getCams().forEach(c => state.clipNos[c] = 1);
     }
     renderEdit(); saveState();
   });
@@ -3363,6 +3396,21 @@ document.querySelectorAll('.segmented button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const group = btn.closest('.segmented');
     const field = group.dataset.field;
+    // cámara: multiselección. Tocar una NO seleccionada la añade; tocar una
+    // seleccionada la quita (nunca se quita la última). Un clap registra la
+    // toma en TODAS las seleccionadas.
+    if(field === 'cam'){
+      const c = btn.dataset.value;
+      let sel = getCams();
+      if(sel.includes(c)){
+        if(sel.length > 1) sel = sel.filter(x => x !== c);
+      } else {
+        sel = sel.concat(c);
+      }
+      setCams(sel);
+      renderEdit(); saveState();
+      return;
+    }
     // goodTag: toggle (segundo clic en mismo botón lo deselecciona)
     if(field === 'goodTag'){
       state.goodTag = state.goodTag === btn.dataset.value ? null : btn.dataset.value;
@@ -3549,7 +3597,7 @@ function buildPayload(goodVal){
     v:1,
     dt:now.toISOString().slice(0,10), tc:tc,
     sc:state.sc, sh:state.sh, tk:state.tk,
-    cam:state.cam, card:state.card,
+    cam:state.cam, cams:getCams(), clips:clipMap(), card:state.card,
     int:state.int, dn:state.dn,
     fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
     sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
@@ -3648,7 +3696,7 @@ function buildFlashPayload(){
     dt:now.toISOString().slice(0,10), tc:tc,
     ts: now.toISOString(),
     sc:state.sc, sh:state.sh, tk:state.tk,
-    cam:state.cam, card:state.card, clip:formatClipName(),
+    cam:state.cam, cams:getCams(), clips:clipMap(), card:state.card, clip:formatClipName(),
     int:state.int, dn:state.dn,
     fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
     sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
@@ -3693,7 +3741,7 @@ function renderDataView(payload){
   document.getElementById('d-tk').textContent = payload.tk;
 
   const badges = [
-    [t('b_cam'), `${payload.cam || '–'}·${formatCard(payload.card)}`],
+    [t('b_cam'), `${(payload.cams && payload.cams.length ? payload.cams.join('·') : (payload.cam || '–'))}·${formatCard(payload.card)}`],
     [t('b_esc'), `${payload.int}·${payload.dn}`],
     [t('b_fps'), formatFps(payload.fps)],
     [t('b_lente'), formatLens(payload.mm, payload.lensType || 'sph', payload.squeeze)],
@@ -3760,21 +3808,28 @@ function confirmRoll(clapPayload){
   // sabe si es buena); se valoran después con la tarjeta de flags, que guarda
   // en la fila de esta toma. Al repetir el clap sobre la misma toma, upsert
   // conserva la valoración previa (no incluimos toma_buena/notes en la entrada).
-  upsertLogEntry({
-    ts: new Date().toISOString(),
-    clap_ts: clapPayload ? clapPayload.ts : '',
-    sc: state.sc, sh: state.sh, tk: state.tk,
-    cam: state.cam, card: state.card,
-    clip: formatClipName(),
-    int: state.int, dn: state.dn,
-    fps: state.fps, mm: state.mm, lensType: state.lensType, squeeze: state.squeeze,
-    sht: state.sht, shtDeg: state.shtDeg, shtMode: state.shtMode,
-    iso: state.iso, ap: state.ap, apMode: state.apMode, wb: state.wb
+  // Una fila por cada cámara seleccionada (multicámara: mismo clap, filas
+  // separadas por cámara, cada una con su propio nombre de clip).
+  const cams = getCams();
+  const nowIso = new Date().toISOString();
+  const clapTs = clapPayload ? clapPayload.ts : '';
+  cams.forEach(c => {
+    upsertLogEntry({
+      ts: nowIso,
+      clap_ts: clapTs,
+      sc: state.sc, sh: state.sh, tk: state.tk,
+      cam: c, card: state.card,
+      clip: formatClipName(c),
+      int: state.int, dn: state.dn,
+      fps: state.fps, mm: state.mm, lensType: state.lensType, squeeze: state.squeeze,
+      sht: state.sht, shtDeg: state.shtDeg, shtMode: state.shtMode,
+      iso: state.iso, ap: state.ap, apMode: state.apMode, wb: state.wb
+    });
   });
 
-  // Avanzar el contador de clip de ESTA cámara (cada clap = un clip grabado).
+  // Avanzar el contador de clip de CADA cámara (cada clap = un clip grabado).
   if(!state.clipNos) state.clipNos = {A:1, B:1, C:1};
-  state.clipNos[state.cam] = ((state.clipNos[state.cam] || 1)) + 1;
+  cams.forEach(c => state.clipNos[c] = ((state.clipNos[c] || 1)) + 1);
 
   state.lastTakeNumber = state.tk;
   state.pendingAdvance = true;
@@ -4128,14 +4183,19 @@ function saveCurrentTake(){
   // La valoración es para la ÚLTIMA toma rodada (lastTakeNumber), no la actual.
   // Solo actualizamos buena/mala + notas; upsertLogEntry conserva técnicos y clap.
   const targetTk = state.lastTakeNumber != null ? state.lastTakeNumber : state.tk;
-  const key = takenKey(state.cam, state.card, state.sc, state.sh, targetTk);
-  upsertLogEntry({
-    ts: new Date().toISOString(),
-    sc: state.sc, sh: state.sh, tk: targetTk,
-    cam: state.cam, card: state.card,
-    toma_buena: state.goodTag,
-    notes: state.noteText || '',
-    good_enviado: state.goodTag === 'buena' ? key : (state.goodTag === 'mala' ? 'mala' : '')
+  // La valoración de la toma se aplica a TODAS las cámaras seleccionadas
+  // (una toma buena lo es para todas las cámaras de ese clap).
+  const nowIso = new Date().toISOString();
+  getCams().forEach(c => {
+    const key = takenKey(c, state.card, state.sc, state.sh, targetTk);
+    upsertLogEntry({
+      ts: nowIso,
+      sc: state.sc, sh: state.sh, tk: targetTk,
+      cam: c, card: state.card,
+      toma_buena: state.goodTag,
+      notes: state.noteText || '',
+      good_enviado: state.goodTag === 'buena' ? key : (state.goodTag === 'mala' ? 'mala' : '')
+    });
   });
 
   if(state.goodTag === 'buena'){
@@ -4313,6 +4373,7 @@ function resetSession(){
   localStorage.removeItem('claquetaState');
   state = Object.assign({}, DEFAULT_STATE);
   state.clipNos = {A:1, B:1, C:1};   // copia propia (no compartir con DEFAULT_STATE)
+  state.cams = ['A']; state.cam = 'A';
   state.log = [];
   state.lang = lang;
   state.sessionDate = new Date().toISOString().slice(0,10);
