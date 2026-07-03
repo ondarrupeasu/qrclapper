@@ -3506,7 +3506,17 @@ document.querySelectorAll('.stepper-grid .stepper .step-btn').forEach(btn=>{
     const dir = parseInt(btn.dataset.dir, 10);
     switch(field){
       case 'fps': state.fps = clampList(FPS_LIST, state.fps, dir); break;
-      case 'mm':  state.mm  = clampNum(state.mm, dir, 1, 8, 300); state.lensName = ''; break;
+      case 'mm': {
+        const cur = (state.lenses || []).find(x => x.name === state.lensName);
+        if(cur && cur.kind === 'zoom'){
+          // zoom: cambiar la focal es normal, se mantiene la óptica y se limita al rango
+          state.mm = Math.min(cur.max, Math.max(cur.min, state.mm + dir));
+        } else {
+          state.mm = clampNum(state.mm, dir, 1, 8, 300);
+          state.lensName = '';   // un fijo: cambiar la focal = ya no es esa óptica
+        }
+        break;
+      }
       case 'sht':
         if(state.shtMode === 'deg') state.shtDeg = clampList(SHUTTER_ANGLE_LIST, state.shtDeg, dir);
         else state.sht = clampList(SHUTTER_LIST, state.sht, dir);
@@ -4332,7 +4342,7 @@ function renderLog(){
     const good = e.toma_buena === 'buena' ? '✓' : e.toma_buena === 'mala' ? '✗' : '—';
     const cls  = e.toma_buena === 'buena' ? 'row-buena' : e.toma_buena === 'mala' ? 'row-mala' : '';
     const fps  = e.fps != null ? (Number.isInteger(e.fps) ? e.fps : parseFloat(e.fps).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')) : '—';
-    const mm   = e.lensName ? e.lensName : (e.mm != null ? formatLens(e.mm, e.lensType || 'sph', e.squeeze) : '—');
+    const mm   = e.lensName ? lensDisplay(e.lensName, e.mm) : (e.mm != null ? formatLens(e.mm, e.lensType || 'sph', e.squeeze) : '—');
     const sht  = (e.shtMode === 'deg' && e.shtDeg != null) ? e.shtDeg + '°'
                : (e.sht != null ? '1/' + e.sht : '—');
     const iso  = e.iso  != null ? e.iso : '—';
@@ -4572,11 +4582,23 @@ document.getElementById('btn-export').addEventListener('click', exportLog);
 
 /* ---- gestor de ópticas de la producción (nombre + focal + tipo + squeeze) ---- */
 function lensSub(l){
-  return l.mm + 'mm · ' + (l.lensType === 'ana' ? 'Ana ' + formatSqueeze(l.squeeze) : t('esferica'));
+  const tail = l.lensType === 'ana' ? 'Ana ' + formatSqueeze(l.squeeze) : t('esferica');
+  return (l.kind === 'zoom' ? (l.min + '-' + l.max + 'mm') : (l.mm + 'mm')) + ' · ' + tail;
 }
 function applyLens(l){
-  state.mm = l.mm; state.lensType = l.lensType; state.squeeze = l.squeeze || 2; state.lensName = l.name;
+  state.lensType = l.lensType; state.squeeze = l.squeeze || 2; state.lensName = l.name;
+  if(l.kind === 'zoom'){
+    // zoom: conservar la focal actual si cae en el rango; si no, ir al mínimo
+    state.mm = (state.mm >= l.min && state.mm <= l.max) ? state.mm : l.min;
+  } else {
+    state.mm = l.mm;
+  }
   renderEdit(); saveState();
+}
+// Nombre de óptica para el informe: en un zoom añade la focal en uso (@120mm).
+function lensDisplay(name, mm){
+  if(name && /\d+\s*[-–]\s*\d+\s*mm/i.test(name) && mm != null) return name + ' @' + mm + 'mm';
+  return name;
 }
 function renderLensList(){
   const wrap = document.getElementById('lens-list');
@@ -4640,11 +4662,15 @@ function catalogEntries(query, cat){
   });
   return terms.length ? out.filter(e => { const s = e.label.toLowerCase(); return terms.every(t => s.includes(t)); }) : out;
 }
-function addCatalogLens(entry, mm){
-  const name = entry.kind === 'zoom' ? (entry.brand+' '+entry.model+' '+mm+'mm') : entry.label;
-  const lens = { name, mm, lensType: entry.lensType, squeeze: entry.lensType === 'ana' ? entry.squeeze : 2 };
+function addCatalogLens(entry){
+  const sq = entry.lensType === 'ana' ? entry.squeeze : 2;
+  // Un zoom entra con su nombre de rango; la focal en uso se ajusta luego con
+  // el stepper "Lente (mm)". Un fijo entra con su focal concreta.
+  const lens = entry.kind === 'zoom'
+    ? { name: entry.label, lensType: entry.lensType, squeeze: sq, kind: 'zoom', min: entry.min, max: entry.max }
+    : { name: entry.label, mm: entry.mm, lensType: entry.lensType, squeeze: sq, kind: 'prime' };
   if(!state.lenses) state.lenses = [];
-  if(!state.lenses.some(l => l.name === name)) state.lenses.push(lens);
+  if(!state.lenses.some(l => l.name === lens.name)) state.lenses.push(lens);
   applyLens(lens);
   saveState();
   closeLensModal();
@@ -4664,14 +4690,7 @@ function renderCatalog(){
     const sel = document.createElement('button'); sel.className = 'lens-sel';
     const sub = e.lensType === 'ana' ? ('Ana '+formatSqueeze(e.squeeze)) : t('esferica');
     sel.innerHTML = '<span>'+esc(e.label)+'</span><span class="lens-sub">'+esc(sub)+'</span>';
-    sel.addEventListener('click', ()=>{
-      if(e.kind === 'zoom'){
-        closeLensModal();
-        openKeypad({ title:t('catalogo_focal'), value:e.min, min:e.min, max:e.max, maxDigits:4, onConfirm:(v)=> addCatalogLens(e, v) });
-      } else {
-        addCatalogLens(e, e.mm);
-      }
-    });
+    sel.addEventListener('click', ()=> addCatalogLens(e));
     item.appendChild(sel); wrap.appendChild(item);
   });
 }
@@ -4726,7 +4745,7 @@ function suggestLens(){
       const lensType = document.getElementById('lensf-type').value;
       const squeeze = parseFloat(document.getElementById('lensf-sq').value) || 2;
       if(!state.lenses) state.lenses = [];
-      state.lenses.push({ name, mm, lensType, squeeze: lensType === 'ana' ? squeeze : 2 });
+      state.lenses.push({ name, mm, lensType, squeeze: lensType === 'ana' ? squeeze : 2, kind: 'prime' });
       saveState();
       document.getElementById('lens-form').style.display = 'none';
       document.getElementById('lens-list-view').style.display = '';
