@@ -3257,9 +3257,8 @@ const I18N = {
     produccion:'Producción', director:'Director/a', dp:'Dir. de fotografía',
     datos_produccion:'Datos de producción',
     qr_nivel:'Nivel del QR', qr_basico:'Básico', qr_completo:'Completo',
-    qr_hint_basico:'Viaja: escena, plano, toma, cámara, tarjeta, nombre de clip, hora del clap y toma buena.',
-    qr_hint_completo:'Todo lo del Básico + Int/Ext, Día/Noche, fps, óptica, obturador, ISO, diafragma y WB.',
-    qr_hint_foot:'Producción, director, DP y notas van siempre en el informe (CSV/JSON).',
+    qr_hint_basico:'Básico: escena, plano, toma, cámara, tarjeta, clip, hora del clap y toma buena.',
+    qr_hint_extra:'Completo añade: Int/Ext, Día/Noche, fps, óptica, obturador, ISO, diafragma y WB.',
   },
   en: {
     title:'CLAPPERQR',
@@ -3288,9 +3287,8 @@ const I18N = {
     produccion:'Production', director:'Director', dp:'Cinematographer',
     datos_produccion:'Production info',
     qr_nivel:'QR level', qr_basico:'Basic', qr_completo:'Full',
-    qr_hint_basico:'Carries: scene, shot, take, camera, card, clip name, clap time and good take.',
-    qr_hint_completo:'Everything in Basic + Int/Ext, Day/Night, fps, lens, shutter, ISO, aperture and WB.',
-    qr_hint_foot:'Production, director, DP and notes always travel in the report (CSV/JSON).',
+    qr_hint_basico:'Basic: scene, shot, take, camera, card, clip, clap time and good take.',
+    qr_hint_extra:'Full adds: Int/Ext, Day/Night, fps, lens, shutter, ISO, aperture and WB.',
   },
   eu: {
     title:'CLAPPERQR',
@@ -3319,9 +3317,8 @@ const I18N = {
     produccion:'Ekoizpena', director:'Zuzendaria', dp:'Argazki zuzendaria',
     datos_produccion:'Ekoizpenaren datuak',
     qr_nivel:'QR maila', qr_basico:'Oinarrizkoa', qr_completo:'Osoa',
-    qr_hint_basico:'Doa: eszena, plano, toma, kamera, txartela, klip izena, klap ordua eta toma ona.',
-    qr_hint_completo:'Oinarrizkoaren dena + Barn/Kanp, Eguna/Gaua, fps, optika, obturadorea, ISO, diafragma eta ZB.',
-    qr_hint_foot:'Ekoizpena, zuzendaria, AZ eta oharrak beti informean doaz (CSV/JSON).',
+    qr_hint_basico:'Oinarrizkoa: eszena, plano, toma, kamera, txartela, klipa, klap ordua eta toma ona.',
+    qr_hint_extra:'Osoak gehitzen du: Barn/Kanp, Eguna/Gaua, fps, optika, obturadorea, ISO, diafragma eta ZB.',
   },
 };
 function t(key){
@@ -3443,10 +3440,9 @@ function renderEdit(){
   setSegmented('qrLevel', state.qrLevel || 'basico');
   const qh = document.getElementById('qr-level-hint');
   if(qh){
-    const main = (state.qrLevel === 'completo') ? t('qr_hint_completo') : t('qr_hint_basico');
     qh.innerHTML = '';
-    const d1 = document.createElement('div'); d1.textContent = main;
-    const d2 = document.createElement('div'); d2.className = 'qr-hint-foot'; d2.textContent = t('qr_hint_foot');
+    const d1 = document.createElement('div'); d1.textContent = t('qr_hint_basico');
+    const d2 = document.createElement('div'); d2.className = 'qr-hint-foot'; d2.textContent = t('qr_hint_extra');
     qh.appendChild(d1); qh.appendChild(d2);
   }
   document.getElementById('f-pr').value = state.pr || '';
