@@ -148,6 +148,26 @@
   .export-opt.export-all{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .export-cancel-btn{ width:100%; height:44px; border-radius:8px; font-size:14px; font-weight:700;
     border:1px solid var(--border); background:transparent; color:var(--fg-dim); cursor:pointer; }
+  /* ---- lista de ópticas ---- */
+  .lens-pick-row{ display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .lens-pick-row .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; flex:0 0 auto; }
+  .lens-pick{ flex:1; font-family:var(--mono); font-size:14px; font-weight:700; color:var(--fg);
+    background:var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:8px 12px;
+    cursor:pointer; text-align:left; display:flex; align-items:center; justify-content:space-between; }
+  .lens-pick.custom{ color:var(--fg-dim); font-weight:400; }
+  .lens-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; max-height:44vh; overflow:auto; }
+  .lens-item{ display:flex; align-items:center; gap:8px; }
+  .lens-sel{ flex:1; text-align:left; background:var(--bg-input); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; color:var(--fg); font-family:var(--mono); font-size:14px; cursor:pointer;
+    display:flex; align-items:baseline; gap:8px; justify-content:space-between; }
+  .lens-sel.active{ border-color:var(--accent); color:var(--accent); }
+  .lens-sub{ font-size:11px; color:var(--fg-dim); }
+  .lens-del{ width:40px; height:40px; flex:0 0 auto; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-input); color:var(--fg-dim); font-size:18px; cursor:pointer; }
+  .lens-add-btn{ width:100%; height:44px; border-radius:8px; font-family:var(--mono); font-weight:700; font-size:14px;
+    border:1px dashed var(--border); background:transparent; color:var(--fg); cursor:pointer; margin-bottom:8px; }
+  .lens-form select{ width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; color:var(--fg); font-family:var(--sans); font-size:14px; box-sizing:border-box; }
   .sst-edit .lbl{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--fg-dim); text-transform:uppercase; }
   .prod-field{ margin-bottom:10px; }
   .prod-field:last-child{ margin-bottom:0; }
@@ -499,6 +519,10 @@
             <button data-value="sph" data-i18n="esferica">Esférica</button>
             <button data-value="ana" data-i18n="anamorfica">Anamórfica</button>
           </div>
+        </div>
+        <div class="lens-pick-row">
+          <span class="lbl" data-i18n="optica">Óptica</span>
+          <button id="lens-pick" class="lens-pick custom"><span id="lens-pick-name" data-i18n="manual">Manual</span><span>▾</span></button>
         </div>
         <div class="stepper-grid" style="margin-top:8px;">
           <div class="stepper" data-field="fps">
@@ -3020,7 +3044,7 @@ const DEFAULT_STATE = {
   collapsed:{},              // estado abierto/cerrado de las tarjetas desplegables
   sc:1, sh:1, tk:1,
   int:'INT', dn:'DIA',
-  fps:24, mm:35, lensType:'sph', squeeze:2, sht:50, shtDeg:180, shtMode:'deg', iso:800, ap:2.8, apMode:'T', wb:5600, wbCustom:false,
+  fps:24, mm:35, lensType:'sph', squeeze:2, lensName:'', lenses:[], sht:50, shtDeg:180, shtMode:'deg', iso:800, ap:2.8, apMode:'T', wb:5600, wbCustom:false,
   goodTag:null, noteText:'', pendingAdvance:false,
   autoAdvance:true, dirty:false, negativeData:false,
   pendingGood:'', lastTakeNumber:null,
@@ -3046,6 +3070,7 @@ function loadState(){
   if(!cams.length) cams = [s.cam || 'A'];
   s.cams = CAMS.filter(c => cams.includes(c));
   s.cam = s.cams[0];         // la principal (dirige nombre de clip y valoración mostrados)
+  s.lenses = Array.isArray(s.lenses) ? s.lenses.slice() : [];   // lista de ópticas de la producción
   s.collapsed = Object.assign({}, s.collapsed);
   s.log = Array.isArray(s.log) ? s.log.slice() : [];
   return s;
@@ -3137,6 +3162,7 @@ const I18N = {
     ajustes:'Ajustes',
     lente:'Lente (mm)', obturador:'Obturador', diafragma:'Diafragma', wb:'Balance de blancos (K)',
     esferica:'Esférica', anamorfica:'Anamórfica', squeeze:'Squeeze',
+    optica:'Óptica', manual:'Manual', opticas_titulo:'Ópticas de la producción', anadir_optica:'+ Añadir óptica', cerrar:'Cerrar', nombre:'Nombre', focal:'Focal (mm)', tipo:'Tipo', guardar:'Guardar',
     camara:'Cámara', tarjeta:'Tarjeta',
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
     notas:'Notas', notas_ph:'Notas de la toma…', nombre_clip:'Nombre de clip',
@@ -3160,6 +3186,7 @@ const I18N = {
     ajustes:'Settings',
     lente:'Lens (mm)', obturador:'Shutter', diafragma:'Aperture', wb:'White balance (K)',
     esferica:'Spherical', anamorfica:'Anamorphic', squeeze:'Squeeze',
+    optica:'Lens', manual:'Manual', opticas_titulo:'Production lenses', anadir_optica:'+ Add lens', cerrar:'Close', nombre:'Name', focal:'Focal length (mm)', tipo:'Type', guardar:'Save',
     camara:'Camera', tarjeta:'Card',
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
     notas:'Notes', notas_ph:'Take notes…', nombre_clip:'Clip name',
@@ -3183,6 +3210,7 @@ const I18N = {
     ajustes:'Ezarpenak',
     lente:'Lentea (mm)', obturador:'Obturadorea', diafragma:'Diafragma', wb:'Zuri balantzea (K)',
     esferica:'Esferikoa', anamorfica:'Anamorfikoa', squeeze:'Squeeze',
+    optica:'Optika', manual:'Eskuz', opticas_titulo:'Ekoizpenaren optikak', anadir_optica:'+ Gehitu optika', cerrar:'Itxi', nombre:'Izena', focal:'Fokua (mm)', tipo:'Mota', guardar:'Gorde',
     camara:'Kamera', tarjeta:'Txartela',
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
     notas:'Oharrak', notas_ph:'Tomaren oharrak…', nombre_clip:'Klip izena',
@@ -3268,6 +3296,11 @@ function renderEdit(){
   setSegmented('lensType', state.lensType);
   document.querySelector('.stepper[data-field="squeeze"] [data-val]').textContent = formatSqueeze(state.squeeze);
   document.getElementById('stepper-squeeze').style.display = state.lensType === 'ana' ? '' : 'none';
+  const lpName = document.getElementById('lens-pick-name');
+  if(lpName){
+    lpName.textContent = state.lensName || t('manual');
+    document.getElementById('lens-pick').classList.toggle('custom', !state.lensName);
+  }
 
   document.querySelector('.stepper[data-field="fps"] [data-val]').textContent = formatFps(state.fps);
   document.querySelector('.stepper[data-field="mm"] [data-val]').textContent = state.mm;
@@ -3417,6 +3450,8 @@ document.querySelectorAll('.segmented button').forEach(btn=>{
       state.dirty = true;              // hay cambios sin guardar
     } else {
       state[field] = btn.dataset.value;
+      // Cambiar el tipo de óptica a mano deja de estar ligado a una óptica de la lista.
+      if(field === 'lensType') state.lensName = '';
     }
     renderEdit(); saveState();
     if(field === 'lang' && state.lastPayload) renderDataView(state.lastPayload);
@@ -3429,8 +3464,8 @@ document.querySelectorAll('.stepper-grid .stepper .step-btn').forEach(btn=>{
     const dir = parseInt(btn.dataset.dir, 10);
     switch(field){
       case 'fps': state.fps = clampList(FPS_LIST, state.fps, dir); break;
-      case 'mm':  state.mm  = clampNum(state.mm, dir, 1, 8, 300); break;
-      case 'squeeze': state.squeeze = clampList(SQUEEZE_LIST, state.squeeze, dir); break;
+      case 'mm':  state.mm  = clampNum(state.mm, dir, 1, 8, 300); state.lensName = ''; break;
+      case 'squeeze': state.squeeze = clampList(SQUEEZE_LIST, state.squeeze, dir); state.lensName = ''; break;
       case 'sht':
         if(state.shtMode === 'deg') state.shtDeg = clampList(SHUTTER_ANGLE_LIST, state.shtDeg, dir);
         else state.sht = clampList(SHUTTER_LIST, state.sht, dir);
@@ -3599,7 +3634,7 @@ function buildPayload(goodVal){
     sc:state.sc, sh:state.sh, tk:state.tk,
     cam:state.cam, cams:getCams(), clips:clipMap(), card:state.card,
     int:state.int, dn:state.dn,
-    fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
+    fps:state.fps, mm:state.mm, lensName:state.lensName, lensType:state.lensType, squeeze:state.squeeze,
     sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
     iso:state.iso, ap:state.ap, apMode:state.apMode, wb:state.wb,
     good:goodVal
@@ -3698,7 +3733,7 @@ function buildFlashPayload(){
     sc:state.sc, sh:state.sh, tk:state.tk,
     cam:state.cam, cams:getCams(), clips:clipMap(), card:state.card, clip:formatClipName(),
     int:state.int, dn:state.dn,
-    fps:state.fps, mm:state.mm, lensType:state.lensType, squeeze:state.squeeze,
+    fps:state.fps, mm:state.mm, lensName:state.lensName, lensType:state.lensType, squeeze:state.squeeze,
     sht:state.sht, shtDeg:state.shtDeg, shtMode:state.shtMode,
     iso:state.iso, ap:state.ap, apMode:state.apMode, wb:state.wb
   };
@@ -3821,7 +3856,7 @@ function confirmRoll(clapPayload){
       cam: c, card: state.card,
       clip: formatClipName(c),
       int: state.int, dn: state.dn,
-      fps: state.fps, mm: state.mm, lensType: state.lensType, squeeze: state.squeeze,
+      fps: state.fps, mm: state.mm, lensName: state.lensName, lensType: state.lensType, squeeze: state.squeeze,
       sht: state.sht, shtDeg: state.shtDeg, shtMode: state.shtMode,
       iso: state.iso, ap: state.ap, apMode: state.apMode, wb: state.wb
     });
@@ -4110,7 +4145,7 @@ function playClap(){
 
 /* ---- exportar log de sesion (CSV via Web Share API, con fallback de descarga) ---- */
 function buildCSV(){
-  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','clip','int','dn','fps','mm','lensType','squeeze','sht','shtDeg','shtMode','iso','ap','apMode','wb','toma_buena','notes','good_enviado'];
+  const cols = ['ts','clap_ts','sc','sh','tk','cam','card','clip','int','dn','fps','mm','lensName','lensType','squeeze','sht','shtDeg','shtMode','iso','ap','apMode','wb','toma_buena','notes','good_enviado'];
   const lines = [];
 
   const meta = [
@@ -4243,7 +4278,7 @@ function renderLog(){
     const good = e.toma_buena === 'buena' ? '✓' : e.toma_buena === 'mala' ? '✗' : '—';
     const cls  = e.toma_buena === 'buena' ? 'row-buena' : e.toma_buena === 'mala' ? 'row-mala' : '';
     const fps  = e.fps != null ? (Number.isInteger(e.fps) ? e.fps : parseFloat(e.fps).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')) : '—';
-    const mm   = e.mm   != null ? formatLens(e.mm, e.lensType || 'sph', e.squeeze) : '—';
+    const mm   = e.lensName ? e.lensName : (e.mm != null ? formatLens(e.mm, e.lensType || 'sph', e.squeeze) : '—');
     const sht  = (e.shtMode === 'deg' && e.shtDeg != null) ? e.shtDeg + '°'
                : (e.sht != null ? '1/' + e.sht : '—');
     const iso  = e.iso  != null ? e.iso : '—';
@@ -4360,6 +4395,90 @@ document.getElementById('btn-export').addEventListener('click', exportLog);
     });
     document.getElementById('export-cancel').addEventListener('click', close);
     bd.addEventListener('click', (e)=>{ if(e.target === bd) close(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
+/* ---- gestor de ópticas de la producción (nombre + focal + tipo + squeeze) ---- */
+function lensSub(l){
+  return l.mm + 'mm · ' + (l.lensType === 'ana' ? 'Ana ' + formatSqueeze(l.squeeze) : t('esferica'));
+}
+function applyLens(l){
+  state.mm = l.mm; state.lensType = l.lensType; state.squeeze = l.squeeze || 2; state.lensName = l.name;
+  renderEdit(); saveState();
+}
+function renderLensList(){
+  const wrap = document.getElementById('lens-list');
+  wrap.innerHTML = '';
+  const esc = (s)=> (s||'').replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  // Opción "Manual" (usar los steppers a mano, sin óptica de la lista)
+  const mItem = document.createElement('div'); mItem.className = 'lens-item';
+  const mBtn = document.createElement('button'); mBtn.className = 'lens-sel' + (!state.lensName ? ' active' : '');
+  mBtn.textContent = t('manual');
+  mBtn.addEventListener('click', ()=>{ state.lensName = ''; renderEdit(); saveState(); closeLensModal(); });
+  mItem.appendChild(mBtn); wrap.appendChild(mItem);
+  (state.lenses || []).forEach((l, i)=>{
+    const item = document.createElement('div'); item.className = 'lens-item';
+    const sel = document.createElement('button'); sel.className = 'lens-sel' + (state.lensName === l.name ? ' active' : '');
+    sel.innerHTML = '<span>' + esc(l.name) + '</span><span class="lens-sub">' + esc(lensSub(l)) + '</span>';
+    sel.addEventListener('click', ()=>{ applyLens(l); closeLensModal(); });
+    const del = document.createElement('button'); del.className = 'lens-del'; del.textContent = '×';
+    del.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      state.lenses.splice(i, 1);
+      if(state.lensName === l.name) state.lensName = '';
+      saveState(); renderLensList(); renderEdit();
+    });
+    item.appendChild(sel); item.appendChild(del); wrap.appendChild(item);
+  });
+}
+function openLensModal(){
+  document.getElementById('lens-form').style.display = 'none';
+  document.getElementById('lens-list-view').style.display = '';
+  renderLensList();
+  document.getElementById('lens-backdrop').classList.add('show');
+}
+function closeLensModal(){ document.getElementById('lens-backdrop').classList.remove('show'); }
+function showLensForm(){
+  document.getElementById('lensf-name').value = '';
+  document.getElementById('lensf-mm').value = 35;
+  document.getElementById('lensf-type').value = 'sph';
+  document.getElementById('lensf-sq').value = '2';
+  document.getElementById('lensf-sq-field').style.display = 'none';
+  document.getElementById('lens-list-view').style.display = 'none';
+  document.getElementById('lens-form').style.display = '';
+}
+(function(){
+  function setup(){
+    const bd = document.getElementById('lens-backdrop');
+    if(!bd) return;
+    document.getElementById('lens-pick').addEventListener('click', openLensModal);
+    document.getElementById('lens-close').addEventListener('click', closeLensModal);
+    bd.addEventListener('click', (e)=>{ if(e.target === bd) closeLensModal(); });
+    document.getElementById('lens-add').addEventListener('click', showLensForm);
+    document.getElementById('lensf-cancel').addEventListener('click', ()=>{
+      document.getElementById('lens-form').style.display = 'none';
+      document.getElementById('lens-list-view').style.display = '';
+    });
+    document.getElementById('lensf-type').addEventListener('change', (e)=>{
+      document.getElementById('lensf-sq-field').style.display = e.target.value === 'ana' ? '' : 'none';
+    });
+    document.getElementById('lensf-save').addEventListener('click', ()=>{
+      const name = document.getElementById('lensf-name').value.trim();
+      if(!name){ document.getElementById('lensf-name').focus(); return; }
+      let mm = parseInt(document.getElementById('lensf-mm').value, 10);
+      if(isNaN(mm)) mm = 35;
+      mm = Math.min(1000, Math.max(8, mm));
+      const lensType = document.getElementById('lensf-type').value;
+      const squeeze = parseFloat(document.getElementById('lensf-sq').value) || 2;
+      if(!state.lenses) state.lenses = [];
+      state.lenses.push({ name, mm, lensType, squeeze: lensType === 'ana' ? squeeze : 2 });
+      saveState();
+      document.getElementById('lens-form').style.display = 'none';
+      document.getElementById('lens-list-view').style.display = '';
+      renderLensList();
+    });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
@@ -4688,6 +4807,29 @@ document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
       <button class="export-opt export-all" data-fmt="all" data-i18n="todos">Los tres</button>
     </div>
     <button id="export-cancel" class="export-cancel-btn" data-i18n="cancelar">Cancelar</button>
+  </div>
+</div>
+
+<!-- Gestor de ópticas de la producción -->
+<div id="lens-backdrop" class="modal-backdrop">
+  <div class="confirm-box" role="dialog" aria-modal="true">
+    <div class="confirm-msg" id="lens-modal-title" data-i18n="opticas_titulo">Ópticas de la producción</div>
+    <div id="lens-list-view">
+      <div class="lens-list" id="lens-list"></div>
+      <button class="lens-add-btn" id="lens-add" data-i18n="anadir_optica">+ Añadir óptica</button>
+      <button id="lens-close" class="export-cancel-btn" data-i18n="cerrar">Cerrar</button>
+    </div>
+    <div class="lens-form" id="lens-form" style="display:none;">
+      <div class="prod-field"><label class="lbl" data-i18n="nombre">Nombre</label>
+        <input id="lensf-name" type="text" placeholder="Cooke S4 32"></div>
+      <div class="prod-field"><label class="lbl" data-i18n="focal">Focal (mm)</label>
+        <input id="lensf-mm" type="number" min="8" max="1000" value="32"></div>
+      <div class="prod-field"><label class="lbl" data-i18n="tipo">Tipo</label>
+        <select id="lensf-type"><option value="sph" data-i18n="esferica">Esférica</option><option value="ana" data-i18n="anamorfica">Anamórfica</option></select></div>
+      <div class="prod-field" id="lensf-sq-field" style="display:none;"><label class="lbl" data-i18n="squeeze">Squeeze</label>
+        <select id="lensf-sq"><option value="1.33">1.33x</option><option value="1.5">1.5x</option><option value="1.8">1.8x</option><option value="2" selected>2x</option></select></div>
+      <div class="confirm-actions"><button id="lensf-cancel" data-i18n="cancelar">Cancelar</button><button id="lensf-save" data-i18n="guardar">Guardar</button></div>
+    </div>
   </div>
 </div>
 
