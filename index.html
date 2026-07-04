@@ -232,6 +232,7 @@
   /* ---- teclado numérico a medida (tocar el número de Escena/Plano/Toma) ---- */
   .sst-edit[data-field="sc"] .val, .sst-edit[data-field="sh"] .val,
   .sst-edit[data-field="tk"] .val{ cursor:pointer; border-bottom:1px dotted var(--fg-dim); }
+  .stepper[data-field="mm"] .val{ cursor:pointer; border-bottom:1px dotted var(--fg-dim); }
   #keypad-backdrop{ position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.6);
     display:none; align-items:flex-end; justify-content:center; }
   #keypad-backdrop.show{ display:flex; }
@@ -3846,6 +3847,22 @@ function openKeypad(opts){
         const f = el.closest('.sst-edit').dataset.field;
         openKeypad({ title:t(KP_KEYS[f]), value:state[f], min:1, maxDigits:4,
           onConfirm:(v)=>{ state[f] = v; renderEdit(); saveState(); } });
+      });
+    });
+
+    // Lente (mm): tocar el número abre el teclado (evita pulsar +/- mil veces).
+    const mmVal = document.querySelector('.stepper[data-field="mm"] [data-val]');
+    if(mmVal) mmVal.addEventListener('click', ()=>{
+      const cur = (state.lenses || []).find(x => x.name === state.lensName);
+      const isZoom = cur && cur.kind === 'zoom';
+      openKeypad({
+        title: t('lente'), value: state.mm,
+        min: isZoom ? cur.min : 4, max: isZoom ? cur.max : 2000, maxDigits: 4,
+        onConfirm: (v)=>{
+          if(isZoom){ state.mm = Math.min(cur.max, Math.max(cur.min, v)); }
+          else { state.mm = v; state.lensName = ''; }  // fijo/manual: cambiar la focal deja de ser esa óptica
+          renderEdit(); saveState();
+        }
       });
     });
   }
