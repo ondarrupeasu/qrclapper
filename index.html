@@ -319,11 +319,10 @@
   @media (min-width: 720px){
     #screen-edit .edit-inner,
     #shared-header .edit-inner{ max-width:900px; }
-    #screen-edit .edit-inner{ column-count:2; column-gap:16px; }
-    #screen-edit .edit-inner > .card{ break-inside:avoid; -webkit-column-break-inside:avoid; }
-    /* Producción (arriba) y Ajustes (abajo) a ancho completo; en medio,
-       Cámara/Escena/Flags en 2 columnas (Escena queda visible arriba). */
-    #card-produccion, #card-ajustes{ column-span:all; -webkit-column-span:all; }
+    /* dos columnas independientes: izquierda = flujo de rodaje (cámara →
+       escena/plano/toma → buena/mala); derecha = producción + ajustes. */
+    #screen-edit .edit-inner{ display:flex; align-items:flex-start; gap:16px; }
+    #screen-edit .edit-col{ flex:1; min-width:0; }
     .btn-publicar button{ max-width:900px; }
   }
   /* ---- apaisado con poca altura (móvil landscape): cabecera en UNA fila
@@ -484,34 +483,7 @@
 <div id="screen-edit" class="screen active">
   <div class="edit-inner">
 
-    <!-- Datos de produccion: solo viajan al CSV de sesion, nunca al QR -->
-    <div class="card collapsed" id="card-produccion">
-      <h2 class="collapsible" data-toggle="card-produccion"><span data-i18n="datos_produccion">Datos de producción</span><span class="chev">▾</span></h2>
-      <div class="card-body">
-        <div class="prod-field">
-          <label class="lbl" data-i18n="produccion">Producción</label>
-          <input type="text" id="f-pr" autocomplete="off">
-        </div>
-        <div class="prod-field">
-          <label class="lbl" data-i18n="director">Director/a</label>
-          <input type="text" id="f-dir" autocomplete="off">
-        </div>
-        <div class="prod-field">
-          <label class="lbl" data-i18n="dp">Dir. de fotografía</label>
-          <input type="text" id="f-dp" autocomplete="off">
-        </div>
-        <div class="prod-field">
-          <label class="lbl" data-i18n="qr_nivel">Nivel del QR</label>
-          <div class="seg-group" style="margin-bottom:0;">
-            <div class="segmented" data-field="qrLevel">
-              <button data-value="basico" data-i18n="qr_basico">Básico</button>
-              <button data-value="completo" data-i18n="qr_completo">Completo</button>
-            </div>
-          </div>
-          <div class="qr-level-hint" id="qr-level-hint"></div>
-        </div>
-      </div>
-    </div>
+    <div class="edit-col edit-col-a">
 
     <!-- Camara / Tarjeta -->
     <div class="card">
@@ -590,6 +562,39 @@
       <textarea id="f-note" class="note-input" rows="2" data-i18n-ph="notas_ph"
         placeholder="Notas de la toma…"></textarea>
       <button id="btn-save-take-ctx" class="save-take-btn" disabled>✓ Guardado</button>
+    </div>
+
+    </div><!-- /edit-col-a -->
+
+    <div class="edit-col edit-col-b">
+
+    <!-- Datos de produccion: solo viajan al CSV de sesion, nunca al QR -->
+    <div class="card collapsed" id="card-produccion">
+      <h2 class="collapsible" data-toggle="card-produccion"><span data-i18n="datos_produccion">Datos de producción</span><span class="chev">▾</span></h2>
+      <div class="card-body">
+        <div class="prod-field">
+          <label class="lbl" data-i18n="produccion">Producción</label>
+          <input type="text" id="f-pr" autocomplete="off">
+        </div>
+        <div class="prod-field">
+          <label class="lbl" data-i18n="director">Director/a</label>
+          <input type="text" id="f-dir" autocomplete="off">
+        </div>
+        <div class="prod-field">
+          <label class="lbl" data-i18n="dp">Dir. de fotografía</label>
+          <input type="text" id="f-dp" autocomplete="off">
+        </div>
+        <div class="prod-field">
+          <label class="lbl" data-i18n="qr_nivel">Nivel del QR</label>
+          <div class="seg-group" style="margin-bottom:0;">
+            <div class="segmented" data-field="qrLevel">
+              <button data-value="basico" data-i18n="qr_basico">Básico</button>
+              <button data-value="completo" data-i18n="qr_completo">Completo</button>
+            </div>
+          </div>
+          <div class="qr-level-hint" id="qr-level-hint"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Ajustes (desplegable, al fondo): Int/Ext, Día/Noche y ajustes de cámara.
@@ -685,6 +690,7 @@
       </div>
     </div>
 
+    </div><!-- /edit-col-b -->
 
   </div>
 
