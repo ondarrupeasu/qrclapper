@@ -4880,8 +4880,13 @@ function addCatalogLens(entry){
   if(!state.lenses.some(l => l.name === lens.name)) state.lenses.push(lens);
   applyLens(lens);
   saveState();
-  closeLensModal();
   showToast(t('optica_anadida'));
+  // Quedarse en el modal y volver a la lista de la producción (ves la óptica
+  // añadida/seleccionada). Así se puede montar el kit sin salir a Editar; se
+  // sale con "Cerrar" al terminar.
+  document.getElementById('lens-catalog-view').style.display = 'none';
+  document.getElementById('lens-list-view').style.display = '';
+  renderLensList();
 }
 function renderCatalog(){
   const wrap = document.getElementById('lens-catalog-list');
