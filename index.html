@@ -40,8 +40,13 @@
   #screen-calibrate{ display:none; height:100vh; overflow-y:auto; box-sizing:border-box;
     padding: calc(130px + env(safe-area-inset-top)) 16px 32px; }
   #screen-calibrate.active{ display:block; }
-  .calib-title{ font-size:1.1rem; font-weight:600; margin-bottom:4px; }
-  .calib-desc{ font-size:0.82rem; opacity:0.6; margin-bottom:20px; line-height:1.4; }
+  .calib-title{ font-size:1.1rem; font-weight:600; margin-bottom:4px; max-width:920px; margin-left:auto; margin-right:auto; }
+  .calib-desc{ font-size:0.82rem; opacity:0.6; margin-bottom:20px; line-height:1.4; max-width:920px; margin-left:auto; margin-right:auto; }
+  /* osciloscopio + resultado a la izquierda, botones a la derecha */
+  .calib-body{ display:flex; gap:28px; align-items:flex-start; max-width:920px; margin:0 auto; }
+  .calib-left, .calib-right{ flex:1; min-width:0; }
+  .calib-right{ display:flex; flex-direction:column; }
+  @media (max-width: 640px){ .calib-body{ flex-direction:column; gap:0; } }
   .calib-canvas-wrap{ background:#111; border-radius:10px; overflow:hidden; margin-bottom:20px; }
   #calib-canvas{ width:100%; height:120px; display:block; }
   .calib-result{ font-size:2.6rem; font-weight:700; text-align:center;
@@ -757,25 +762,27 @@
     el promedio. El valor se aplica automáticamente a la cuenta atrás.
   </p>
 
-  <div class="calib-canvas-wrap">
-    <canvas id="calib-canvas" height="120"></canvas>
+  <div class="calib-body">
+    <div class="calib-left">
+      <div class="calib-canvas-wrap">
+        <canvas id="calib-canvas" height="120"></canvas>
+      </div>
+      <div class="calib-result no-measure" id="calib-result">— ms</div>
+      <div class="calib-result-label">Latencia medida</div>
+      <div class="calib-status" id="calib-status">Listo</div>
+    </div>
+    <div class="calib-right">
+      <button class="calib-btn" id="btn-calib-measure">🔊 Emitir click y medir</button>
+      <div class="calib-row">
+        <label>Compensación manual</label>
+        <input type="range" id="calib-slider" min="0" max="300" step="1" value="0">
+        <span class="calib-val" id="calib-slider-val">0 ms</span>
+      </div>
+      <button class="calib-btn secondary" id="btn-calib-save">Guardar y aplicar</button>
+      <button class="calib-btn secondary" id="btn-calib-reset">Eliminar compensación</button>
+      <div class="calib-saved" id="calib-saved-info"></div>
+    </div>
   </div>
-
-  <div class="calib-result no-measure" id="calib-result">— ms</div>
-  <div class="calib-result-label">Latencia medida</div>
-  <div class="calib-status" id="calib-status">Listo</div>
-
-  <button class="calib-btn" id="btn-calib-measure">🔊 Emitir click y medir</button>
-
-  <div class="calib-row">
-    <label>Compensación manual</label>
-    <input type="range" id="calib-slider" min="0" max="300" step="1" value="0">
-    <span class="calib-val" id="calib-slider-val">0 ms</span>
-  </div>
-
-  <button class="calib-btn secondary" id="btn-calib-save">Guardar y aplicar</button>
-  <button class="calib-btn secondary" id="btn-calib-reset">Eliminar compensación</button>
-  <div class="calib-saved" id="calib-saved-info"></div>
 </div><!-- /screen-calibrate -->
 
 <!-- ================= PANTALLA QR / DATOS ================= -->
@@ -5015,13 +5022,9 @@ function calibInitScreen(){
     document.getElementById('calib-result').textContent = avg + ' ms';
     document.getElementById('calib-result').classList.remove('no-measure');
   }
-  // Si ya tenemos el micrófono de una medición anterior, arrancar osciloscopio
-  if(calibMicStream){
-    calibStartOscilloscope();
-  } else {
-    document.getElementById('calib-status').textContent =
-      'Pulsa "Emitir click y medir" para activar el micrófono';
-  }
+  // Arrancar el osciloscopio en vivo (pide el micrófono la primera vez).
+  document.getElementById('calib-status').textContent = 'Escuchando… (osciloscopio en vivo)';
+  calibStartOscilloscope();
 }
 
 /* ── Osciloscopio en tiempo real ──────────────────────────────── */
