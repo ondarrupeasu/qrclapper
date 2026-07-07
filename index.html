@@ -477,6 +477,14 @@
             <rect x="4" y="14" width="16" height="6" rx="1"/>
           </svg>
         </button>
+        <button id="btn-import" class="icon-btn" title="Importar / Restaurar sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M12 3v12"/>
+            <path d="M7 10l5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+        </button>
+        <input id="import-file" type="file" accept=".json,application/json" style="display:none">
         <button id="btn-reset" class="icon-btn icon-btn-danger" title="Reiniciar sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
             <path d="M3 6h18"/>
@@ -3297,7 +3305,7 @@ const I18N = {
     buscar_catalogo:'🔍 Buscar en el catálogo', buscar_ph:'Marca, modelo o focal (p. ej. Cooke 32, Sony 24-70)', todas:'Todas', cine:'Cine', foto:'Foto', volver:'Volver', sugerir_optica:'✉︎ Sugerir una óptica que falta', catalogo_vacio:'Sin resultados. Prueba otra búsqueda o sugiere la óptica.', catalogo_escribe:'Escribe para buscar en el catálogo.', catalogo_focal:'¿Con qué focal (mm)?', sugerir_asunto:'Óptica para el catálogo de ClapperQR', sugerir_cuerpo:'Hola, me gustaría que añadierais esta óptica al catálogo de ClapperQR:\n\nMarca y modelo: \nFocal(es): \nEsférica/Anamórfica: \n\nGracias.', optica_anadida:'Óptica añadida a la producción',
     camara:'Cámara', tarjeta:'Tarjeta',
     good:'Toma buena', good_prev:'T.{n} ¿buena/mala?', publicar:'PUBLICAR',
-    notas:'Notas', notas_ph:'Notas de la toma…', notas_sesion:'Notas de sesión', notas_sesion_ph:'Notas generales de la sesión (decisiones, para la siguiente…)', nombre_clip:'Nombre de clip', formato_clip:'Formato', nombre_camara:'Nombre de cámara', multi_edit_hint:'Multicámara: selecciona una sola cámara para editar su formato y nombre.',
+    notas:'Notas', notas_ph:'Notas de la toma…', notas_sesion:'Notas de sesión', notas_sesion_ph:'Notas generales de la sesión (decisiones, para la siguiente…)', import_titulo:'Importar / Restaurar sesión', import_reemplazar:'Reemplazar', import_anadir:'Añadir tomas', import_tomas:'tomas', import_ok:'Sesión importada ({n} tomas)', import_err_format:'No es un archivo válido de ClapperQR', nombre_clip:'Nombre de clip', formato_clip:'Formato', nombre_camara:'Nombre de cámara', multi_edit_hint:'Multicámara: selecciona una sola cámara para editar su formato y nombre.',
     fmt_arri:'ARRI · RED · Sony · Canon (A001C001)', fmt_red_us:'RED · Blackmagic (A001_C001)', fmt_sony_t:'Sony Title (C0001)', fmt_bmd_date:'Blackmagic + fecha (A001_20260703_C001)', fmt_canon_xf:'Canon XF (AA0001)', fmt_pana:'Panasonic (P0000001)', fmt_dji:'DJI nativo (DJI_0001)', fmt_gopro:'GoPro (GX010001)', fmt_img:'iPhone / genérico (IMG_0001)',
     auto_avance:'Avance automático de toma', guardar_toma:'Guardar', guardado:'✓ Guardado',
     cancelar:'Cancelar', aceptar:'Aceptar', exportar_como:'¿Qué formato quieres exportar?', todos:'Los tres',
@@ -3327,7 +3335,7 @@ const I18N = {
     buscar_catalogo:'🔍 Search the catalog', buscar_ph:'Brand, model or focal (e.g. Cooke 32, Sony 24-70)', todas:'All', cine:'Cine', foto:'Photo', volver:'Back', sugerir_optica:'✉︎ Suggest a missing lens', catalogo_vacio:'No results. Try another search or suggest the lens.', catalogo_escribe:'Type to search the catalog.', catalogo_focal:'Which focal length (mm)?', sugerir_asunto:'Lens for the ClapperQR catalog', sugerir_cuerpo:'Hi, I would like this lens added to the ClapperQR catalog:\n\nBrand and model: \nFocal length(s): \nSpherical/Anamorphic: \n\nThanks.', optica_anadida:'Lens added to production',
     camara:'Camera', tarjeta:'Card',
     good:'Good take', good_prev:'T.{n} good/bad?', publicar:'PUBLISH',
-    notas:'Notes', notas_ph:'Take notes…', notas_sesion:'Session notes', notas_sesion_ph:'General session notes (decisions, for next time…)', nombre_clip:'Clip name', formato_clip:'Format', nombre_camara:'Camera name', multi_edit_hint:'Multicam: select a single camera to edit its format and name.',
+    notas:'Notes', notas_ph:'Take notes…', notas_sesion:'Session notes', notas_sesion_ph:'General session notes (decisions, for next time…)', import_titulo:'Import / Restore session', import_reemplazar:'Replace', import_anadir:'Add takes', import_tomas:'takes', import_ok:'Session imported ({n} takes)', import_err_format:'Not a valid ClapperQR file', nombre_clip:'Clip name', formato_clip:'Format', nombre_camara:'Camera name', multi_edit_hint:'Multicam: select a single camera to edit its format and name.',
     fmt_bmd_date:'Blackmagic + date (A001_20260703_C001)', fmt_dji:'DJI native (DJI_0001)', fmt_img:'iPhone / generic (IMG_0001)',
     auto_avance:'Auto-advance take', guardar_toma:'Save', guardado:'✓ Saved',
     cancelar:'Cancel', aceptar:'OK', exportar_como:'Which format to export?', todos:'All three',
@@ -3357,7 +3365,7 @@ const I18N = {
     buscar_catalogo:'🔍 Bilatu katalogoan', buscar_ph:'Marka, modeloa edo fokua (adib. Cooke 32, Sony 24-70)', todas:'Denak', cine:'Zinema', foto:'Argazkia', volver:'Itzuli', sugerir_optica:'✉︎ Iradoki falta den optika', catalogo_vacio:'Emaitzarik ez. Saiatu beste bilaketa batekin edo iradoki optika.', catalogo_escribe:'Idatzi katalogoan bilatzeko.', catalogo_focal:'Zein fokurekin (mm)?', sugerir_asunto:'Optika ClapperQR katalogorako', sugerir_cuerpo:'Kaixo, optika hau ClapperQR katalogoan gehitzea nahiko nuke:\n\nMarka eta modeloa: \nFokua(k): \nEsferikoa/Anamorfikoa: \n\nEskerrik asko.', optica_anadida:'Optika ekoizpenari gehituta',
     camara:'Kamera', tarjeta:'Txartela',
     good:'Toma ona', good_prev:'T.{n} ona/txarra?', publicar:'ARGITARATU',
-    notas:'Oharrak', notas_ph:'Tomaren oharrak…', notas_sesion:'Saioaren oharrak', notas_sesion_ph:'Saioaren ohar orokorrak (erabakiak, hurrengorako…)', nombre_clip:'Klip izena', formato_clip:'Formatua', nombre_camara:'Kamera izena', multi_edit_hint:'Kamera anitz: hautatu kamera bakarra bere formatua eta izena editatzeko.',
+    notas:'Oharrak', notas_ph:'Tomaren oharrak…', notas_sesion:'Saioaren oharrak', notas_sesion_ph:'Saioaren ohar orokorrak (erabakiak, hurrengorako…)', import_titulo:'Saioa inportatu / berreskuratu', import_reemplazar:'Ordeztu', import_anadir:'Tomak gehitu', import_tomas:'toma', import_ok:'Saioa inportatuta ({n} toma)', import_err_format:'Ez da baliozko ClapperQR fitxategia', nombre_clip:'Klip izena', formato_clip:'Formatua', nombre_camara:'Kamera izena', multi_edit_hint:'Kamera anitz: hautatu kamera bakarra bere formatua eta izena editatzeko.',
     fmt_bmd_date:'Blackmagic + data (A001_20260703_C001)', fmt_dji:'DJI natiboa (DJI_0001)', fmt_img:'iPhone / orokorra (IMG_0001)',
     auto_avance:'Toma automatikoki aurreratu', guardar_toma:'Gorde', guardado:'✓ Gordeta',
     cancelar:'Utzi', aceptar:'Ados', exportar_como:'Zein formatu esportatu?', todos:'Hirurak',
@@ -4802,6 +4810,84 @@ document.getElementById('btn-export').addEventListener('click', exportLog);
   else setup();
 })();
 
+/* ---- Importar / Restaurar sesión desde un JSON de ClapperQR ----
+   Lee el JSON canónico que genera la propia app (buildJSON). Sirve para:
+   copia de seguridad, cambiar de dispositivo o retomar un parte a medias.
+   Dos modos: REEMPLAZAR (pisa la sesión actual) o AÑADIR tomas (fusiona,
+   evitando duplicados por marca de tiempo). ---- */
+let _importData = null;   // datos del JSON validado, a la espera de que el usuario elija modo
+function importSession(){
+  document.getElementById('import-file').value = '';   // permite re-elegir el mismo archivo
+  document.getElementById('import-file').click();
+}
+function _handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let data;
+    try{ data = JSON.parse(reader.result); }
+    catch(e){ showToast(t('import_err_format')); return; }
+    if(!data || data.app !== 'ClapperQR' || !Array.isArray(data.tomas)){
+      showToast(t('import_err_format')); return;
+    }
+    _importData = data;
+    // Rellenar el resumen del modal (producción · fecha · nº de tomas)
+    const parts = [];
+    if(data.produccion) parts.push(data.produccion);
+    if(data.fecha_sesion) parts.push(data.fecha_sesion);
+    parts.push(data.tomas.length + ' ' + t('import_tomas'));
+    document.getElementById('import-summary').textContent = parts.join('  ·  ');
+    const bd = document.getElementById('import-backdrop');
+    if(bd) bd.classList.add('show');
+  };
+  reader.onerror = ()=> showToast(t('import_err_format'));
+  reader.readAsText(file);
+}
+function applyImport(mode){
+  const data = _importData;
+  if(!data) return;
+  const incoming = Array.isArray(data.tomas) ? data.tomas : [];
+  let added = incoming.length;
+  if(mode === 'replace'){
+    state.pr = data.produccion || '';
+    state.dir = data.director || '';
+    state.dp = data.dp || '';
+    if(data.fecha_sesion) state.sessionDate = data.fecha_sesion;
+    state.sessionNotes = data.notas_sesion || '';
+    state.log = incoming.slice();
+  }else{ // merge: añadir solo las tomas que no estén ya (por marca de tiempo o clave)
+    const keyOf = (e)=> e.ts || [e.sc,e.sh,e.tk,e.cam,e.card,e.clap_ts].join('-');
+    const seen = new Set(state.log.map(keyOf));
+    added = 0;
+    incoming.forEach(e=>{ if(!seen.has(keyOf(e))){ state.log.push(e); seen.add(keyOf(e)); added++; } });
+    // si la sesión actual no tenía datos de producción, tomarlos del importado
+    if(!state.pr && data.produccion) state.pr = data.produccion;
+    if(!state.dir && data.director) state.dir = data.director;
+    if(!state.dp && data.dp) state.dp = data.dp;
+    if(!state.sessionNotes && data.notas_sesion) state.sessionNotes = data.notas_sesion;
+  }
+  saveState();
+  renderEdit();
+  if(typeof renderLog === 'function') renderLog();
+  _importData = null;
+  showToast(t('import_ok').replace('{n}', added));
+}
+document.getElementById('btn-import').addEventListener('click', importSession);
+document.getElementById('import-file').addEventListener('change', e=> _handleImportFile(e.target.files[0]));
+(function(){
+  function setup(){
+    const bd = document.getElementById('import-backdrop');
+    if(!bd) return;
+    const close = ()=>{ bd.classList.remove('show'); _importData = null; };
+    document.getElementById('import-replace').addEventListener('click', ()=>{ bd.classList.remove('show'); applyImport('replace'); });
+    document.getElementById('import-merge').addEventListener('click', ()=>{ bd.classList.remove('show'); applyImport('merge'); });
+    document.getElementById('import-cancel').addEventListener('click', close);
+    bd.addEventListener('click', (e)=>{ if(e.target === bd) close(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+})();
+
 /* ---- gestor de ópticas de la producción (nombre + focal + tipo + squeeze) ---- */
 function lensSub(l){
   const tail = l.lensType === 'ana' ? 'Ana ' + formatSqueeze(l.squeeze) : t('esferica');
@@ -5024,8 +5110,12 @@ document.getElementById('btn-reset').addEventListener('click', resetSession);
    Al subir un cambio: incrementar APP_VERSION y añadir su entrada ARRIBA. El
    index.html se sirve red-primero, así que al conectarse el usuario baja la
    última versión; si es más nueva que la que vio, se le muestran las novedades. */
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 const CHANGELOG = [
+  { v:"1.0.2", d:"2026-07-07", items:{
+    es:["Importar / Restaurar sesión desde un archivo JSON (copia de seguridad o cambiar de dispositivo)"],
+    en:["Import / Restore a session from a JSON file (backup or switch devices)"],
+  }},
   { v:"1.0.1", d:"2026-07-05", items:{
     es:["Notas generales de sesión (aparte de las notas por toma)"],
     en:["General session notes (separate from per-take notes)"],
@@ -5387,6 +5477,19 @@ document.getElementById('btn-calib-reset').addEventListener('click', ()=>{
       <button class="export-opt export-all" data-fmt="all" data-i18n="todos">Los tres</button>
     </div>
     <button id="export-cancel" class="export-cancel-btn" data-i18n="cancelar">Cancelar</button>
+  </div>
+</div>
+
+<!-- Importar / Restaurar sesión -->
+<div id="import-backdrop" class="modal-backdrop">
+  <div class="confirm-box" role="dialog" aria-modal="true">
+    <div class="confirm-msg" data-i18n="import_titulo">Importar / Restaurar sesión</div>
+    <div class="wn-body" id="import-summary" style="margin-bottom:14px;"></div>
+    <div class="export-grid">
+      <button class="export-opt" id="import-replace" data-i18n="import_reemplazar">Reemplazar</button>
+      <button class="export-opt" id="import-merge" data-i18n="import_anadir">Añadir tomas</button>
+    </div>
+    <button id="import-cancel" class="export-cancel-btn" data-i18n="cancelar">Cancelar</button>
   </div>
 </div>
 
