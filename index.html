@@ -4261,9 +4261,8 @@ function calibGetSavedMs(){
    antes usando el reloj de alta resolución de WebAudio. */
 function playBeep(freq, duration, scheduleOffsetMs){
   try{
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
-    const ctx = audioCtx;
+    const ctx = ensureAudio();
+    if(!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
@@ -4307,6 +4306,7 @@ function cdSweep(frac){
 
 /* ---- cuenta atras 3-2-1 (leader de cine) + beep largo de sync ---- */
 function runCountdown(){
+  ensureAudio();   // contexto listo y corriendo antes de los beeps
   const cdOverlay = document.getElementById('countdown-overlay');
   const cdNumber  = document.getElementById('countdown-number');
   const sequence  = [3, 2, 1];
@@ -4361,6 +4361,36 @@ function runCountdown(){
 
 /* ---- sonido "clap" sintetizado (Web Audio API) ---- */
 let audioCtx = null;
+let _keepAliveOn = false;
+
+/* Punto ÚNICO para preparar el audio: crea el contexto (una vez), lo REANUDA y
+   arranca una fuente silenciosa continua ("keep-alive") para que iOS no vuelva a
+   suspender el contexto ni suelte la ruta de audio (ayuda también con Bluetooth).
+   Se llama en cada gesto de usuario, al volver a la app y antes de cada beep. */
+function ensureAudio(){
+  try{
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+    if(!_keepAliveOn){
+      const g = audioCtx.createGain();
+      g.gain.value = 0.0;                 // inaudible, pero mantiene el grafo activo
+      const osc = audioCtx.createOscillator();
+      osc.frequency.value = 30;
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start();
+      _keepAliveOn = true;
+    }
+  }catch(e){ /* Web Audio no disponible */ }
+  return audioCtx;
+}
+/* Reanudar el audio al volver a primer plano (iOS lo suspende en 2º plano). */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended'){
+    audioCtx.resume();
+  }
+});
 
 // Variables de calibración BT
 let calibMicStream    = null;
@@ -4373,24 +4403,21 @@ let calibMeasurements = [];
    gesto de usuario. Se llama en el primer touchstart de la pantalla
    para que playClap() suene mas tarde sin gesto directo. */
 function unlockAudio(){
+  const ctx = ensureAudio();
+  if(!ctx) return;
   try{
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === 'suspended'){
-      audioCtx.resume();
-    }
-    const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-    const src = audioCtx.createBufferSource();
+    const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(audioCtx.destination);
+    src.connect(ctx.destination);
     src.start();
-  }catch(e){ /* Web Audio no disponible: se omite el sonido */ }
+  }catch(e){}
 }
 
 function playClap(){
   try{
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
-    const ctx = audioCtx;
+    const ctx = ensureAudio();
+    if(!ctx) return;
     const duration = 0.12;   // más corto = más percusivo
     const bufferSize = Math.floor(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
