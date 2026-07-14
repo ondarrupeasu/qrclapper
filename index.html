@@ -584,7 +584,10 @@ function authInit(){
   document.getElementById('auth-toggle').addEventListener('click', e=>{ e.preventDefault(); authSetMode(authMode==='login'?'register':'login'); });
   const lo = document.getElementById('btn-logout');
   if(lo) lo.addEventListener('click', ()=>{ if(confirm('¿Cerrar sesión?')) authLogout(); });
-  if(!AUTH_ENABLED){   // gate desactivado: app abierta como siempre, sin botón de salir
+  // Gate desactivado: app abierta como siempre. Excepción: abrir con ?login=1
+  // fuerza la pantalla de login (para registrarte/probar antes de activarlo).
+  const forceLogin = location.search.indexOf('login=1') !== -1;
+  if(!AUTH_ENABLED && !forceLogin){
     document.getElementById('auth-overlay').style.display = 'none';
     if(lo) lo.style.display = 'none';
     return;
