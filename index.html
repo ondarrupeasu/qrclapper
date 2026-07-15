@@ -87,6 +87,24 @@
   .acct-chip .icon-btn{ width:30px; height:30px; background:transparent; border:none; color:var(--fg-dim); }
   .acct-chip .icon-btn:active{ color:var(--fg); }
   .topbar .lang-switch{ flex:0 0 auto; }
+
+  /* ---- Roles (prototipo) --------------------------------------------------
+     En un rodaje grande hay dos personas: el AUXILIAR de cámara claca (cámara,
+     tarjeta, clip, óptica, cuenta atrás) y la SCRIPT lleva la ficha (escena,
+     plano, toma, buenas/malas, notas). En rodaje pequeño, una sola persona lo
+     hace todo = MIX (la app de siempre).
+     El rol es de ESTE aparato, no de la cuenta: los dos entran con el mismo
+     usuario y cada uno elige el suyo. */
+  body.role-script #card-camara,
+  body.role-script #card-ajustes{ display:none; }
+  body.role-aux #card-flags{ display:none; }
+  /* La script vive en las notas: sin los ajustes de cámara sobra sitio. */
+  body.role-script #f-note{ min-height:150px; }
+  body.role-script .take-tag-row{ margin-bottom:10px; }
+  .role-badge{ font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+    color:var(--fg-dim); border:1px solid var(--border); border-radius:5px;
+    padding:1px 5px; margin-left:6px; flex:0 0 auto; }
+  body.role-mix .role-badge{ display:none; }   /* trabajando solo: no hace falta recordarlo */
   .session-card{ display:flex; align-items:center; justify-content:space-between; }
   .session-card h2{ margin:0; }
   .session-info{ display:flex; flex-direction:column; gap:2px; }
@@ -490,6 +508,15 @@
 
     <div id="acct-menu" style="margin-top:18px;">
       <div style="border:1px solid #2c2d30; border-radius:10px; padding:12px; margin-bottom:8px;">
+        <div style="color:#f3f1ea; font-size:15px; margin-bottom:8px;">En este rodaje soy…</div>
+        <div id="acct-role" style="display:flex; border:1px solid #2c2d30; border-radius:8px; overflow:hidden;">
+          <button data-role="mix"    style="flex:1; background:#0f0f11; border:none; color:#9a9a96; padding:10px 4px; font-size:13px; cursor:pointer;">Todo yo</button>
+          <button data-role="aux"    style="flex:1; background:#0f0f11; border:none; border-left:1px solid #2c2d30; color:#9a9a96; padding:10px 4px; font-size:13px; cursor:pointer;">Aux. cámara</button>
+          <button data-role="script" style="flex:1; background:#0f0f11; border:none; border-left:1px solid #2c2d30; color:#9a9a96; padding:10px 4px; font-size:13px; cursor:pointer;">Script</button>
+        </div>
+        <div id="acct-role-note" style="color:#9a9a96; font-size:11px; margin-top:8px; line-height:1.45;"></div>
+      </div>
+      <div style="border:1px solid #2c2d30; border-radius:10px; padding:12px; margin-bottom:8px;">
         <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;">
           <span style="color:#f3f1ea; font-size:15px;">Respaldo del parte</span>
           <input id="acct-backup" type="checkbox" style="width:20px; height:20px; accent-color:#ff4d2e;">
@@ -694,9 +721,27 @@ async function authHeartbeat(){
 function acctShow(){
   const a = authGet(); if(!a) return;
   document.getElementById('acct-name').textContent = a.username || '';
+  acctRenderRole();
   acctRenderBackup();
   acctMode('menu');
   document.getElementById('acct-overlay').style.display = 'flex';
+}
+
+const ROLE_NOTAS = {
+  mix: 'Trabajas solo: tienes todos los campos, como siempre.',
+  aux: 'Tú clacas: cámara, tarjeta, clip, óptica y cuenta atrás. La valoración y las notas las lleva la script.',
+  script: 'Tú llevas la ficha: escena, plano, toma, buenas/malas y notas. El botón pasa a «Siguiente» (no clacas tú).',
+};
+function acctRenderRole(){
+  if(typeof roleGet !== 'function') return;
+  const r = roleGet();
+  document.querySelectorAll('#acct-role button').forEach(b=>{
+    const on = b.dataset.role === r;
+    b.style.background = on ? '#ff4d2e' : '#0f0f11';
+    b.style.color = on ? '#fff' : '#9a9a96';
+    b.style.fontWeight = on ? '700' : '400';
+  });
+  document.getElementById('acct-role-note').textContent = ROLE_NOTAS[r] || '';
 }
 
 function acctRenderBackup(){
@@ -769,6 +814,9 @@ function authInit(){
   if(lo) lo.addEventListener('click', acctShow);
   document.getElementById('acct-close').addEventListener('click', acctHide);
   document.getElementById('acct-changepass').addEventListener('click', ()=> acctMode('pass'));
+  document.querySelectorAll('#acct-role button').forEach(b=>{
+    b.addEventListener('click', ()=>{ roleSet(b.dataset.role); acctRenderRole(); });
+  });
   document.getElementById('acct-backup').addEventListener('change', e=>{
     if(e.target.checked){
       const ok = confirm('¿Activar el respaldo del parte?\n\n'
@@ -816,6 +864,7 @@ else authInit();
            "QRClappeR" es igual en los tres idiomas y el usuario no se traduce. -->
       <div class="acct-chip plain" id="hdr-acct">
         <h1 id="hdr-title">QRClappeR</h1>
+        <span class="role-badge" id="role-badge"></span>
         <button id="btn-logout" class="icon-btn" title="Tu cuenta" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -888,7 +937,7 @@ else authInit();
     <div class="edit-col edit-col-a">
 
     <!-- Camara / Tarjeta -->
-    <div class="card">
+    <div class="card" id="card-camara">
       <div class="sst-edit-grid sst-edit-grid-2">
         <div class="seg-edit" data-field="cam">
           <div class="lbl" data-i18n="camara">Cámara</div>
@@ -922,7 +971,7 @@ else authInit();
       <div class="cam-multi-hint" id="cam-multi-hint" data-i18n="multi_edit_hint" style="display:none">Multicámara: selecciona una sola cámara para editar su formato y nombre.</div>
     </div>
 
-    <div class="card">
+    <div class="card" id="card-sst">
       <div class="sst-edit-grid">
         <div class="sst-edit" data-field="sc">
           <div class="lbl" data-i18n="escena">Escena</div>
@@ -4773,7 +4822,10 @@ function publicar(){
   switchScreen('display');
   setSub('data');
 }
-document.getElementById('btn-publicar').addEventListener('click', publicar);
+document.getElementById('btn-publicar').addEventListener('click', ()=>{
+  if(typeof roleGet === 'function' && roleGet() === 'script') siguienteToma();
+  else publicar();
+});
 
 /* ---- confirmar rodaje: se llama cuando la cuenta atras llega al flash.
    Este es el momento real de "se ha grabado esta toma": se registra en
@@ -5933,8 +5985,65 @@ function showWhatsNew(){
   else document.addEventListener('DOMContentLoaded', run);
 }
 
+/* ================= ROLES (prototipo) ===================================
+   En rodaje grande son DOS personas con la MISMA cuenta, cada una en su
+   aparato: el AUXILIAR claca (cámara, tarjeta, clip, óptica, cuenta atrás) y
+   la SCRIPT lleva la ficha (escena/plano/toma, buenas, notas). En rodaje
+   pequeño, una sola persona lo hace todo → MIX (la app de siempre).
+
+   OJO: el rol es de ESTE APARATO, no de la cuenta. Por eso NO va en SYNC_KEYS:
+   si viajase, Patricia elegiría "script" y le cambiaría la pantalla al
+   auxiliar desde el otro lado del plató.
+
+   Los dos trabajan SIN hablarse: cada uno rellena lo suyo y los partes se
+   juntan luego por escena+plano+toma+cámara. Por eso la script NO guarda el
+   clap_ts: si no lo escribe, no puede pisarlo.
+   ====================================================================== */
+const ROLE_KEY = 'qr_role';
+const ROLES = ['mix', 'script', 'aux'];
+function roleGet(){
+  const r = localStorage.getItem(ROLE_KEY);
+  return ROLES.includes(r) ? r : 'mix';
+}
+function roleSet(r){
+  if(!ROLES.includes(r)) r = 'mix';
+  localStorage.setItem(ROLE_KEY, r);
+  roleApply();
+}
+function roleApply(){
+  const r = roleGet();
+  document.body.classList.remove('role-mix', 'role-script', 'role-aux');
+  document.body.classList.add('role-' + r);
+  const badge = document.getElementById('role-badge');
+  if(badge) badge.textContent = (r === 'script') ? 'SCRIPT' : (r === 'aux') ? 'AUX' : '';
+  // La script no claca: su botón registra la toma y avanza.
+  const btn = document.getElementById('btn-publicar');
+  if(btn) btn.textContent = (r === 'script') ? 'SIGUIENTE' : t('publicar');
+}
+
+/* El "PUBLICAR" de la script: registra la toma en SU ficha y avanza. Sin
+   cuenta atrás, sin QR y sin clap_ts (ese es del que claca). */
+function siguienteToma(){
+  if(state.dirty) saveCurrentTake();
+  const nowIso = new Date().toISOString();
+  getCams().forEach(c => {
+    upsertLogEntry({
+      ts: nowIso,
+      sc: state.sc, sh: state.sh, tk: state.tk,
+      cam: c, card: state.card,
+      int: state.int, dn: state.dn,
+    });
+  });
+  state.lastTakeNumber = state.tk;
+  state.tk = (state.tk || 1) + 1;
+  state.goodTag = null; state.noteText = ''; state.dirty = false;
+  saveState();
+  renderEdit();
+}
+
 function init(){
   renderEdit();
+  roleApply();
   syncInit();
   applyCollapsed();
   if(state.lastPayload) renderDataView(state.lastPayload);
