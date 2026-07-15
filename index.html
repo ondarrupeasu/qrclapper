@@ -3766,6 +3766,7 @@ const BK_REV = 'qr_backup_rev';     // rev del servidor que tenemos de base
 const BK_AT = 'qr_backup_at';       // cuándo se subió por última vez
 const BK_LOCAL_AT = 'qr_backup_local_at';   // último cambio del parte AQUÍ
 let _bkTimer = null, _bkBusy = false, _bkApplying = false;
+let _bkLogSnapshot = null;   // última foto del parte: dispara la subida al cambiar
 
 function backupOn(){ return localStorage.getItem(BK_ON) === '1'; }
 function backupSetOn(v){ localStorage.setItem(BK_ON, v ? '1' : '0'); }
@@ -3794,6 +3795,7 @@ function applyParte(p){
   _bkApplying = true;
   Object.keys(p).forEach(k => { state[k] = p[k]; });
   localStorage.setItem('claquetaState', JSON.stringify(state));
+  _bkLogSnapshot = JSON.stringify(state.log || []);   // no volver a subir lo recién bajado
   _bkApplying = false;
   if(typeof renderEdit === 'function') renderEdit();
   if(typeof renderLog === 'function') renderLog();
@@ -3836,7 +3838,16 @@ function collectParte(){
 
 function backupTouch(){
   if(!backupOn() || _bkApplying) return;   // aplicando lo del servidor: no es cambio nuestro
+  // La marca de tiempo sí se actualiza con cualquier cambio: es local y es lo
+  // que decide quién gana en los campos sueltos al fusionar.
   localStorage.setItem(BK_LOCAL_AT, String(Date.now()));
+  // Pero SUBIMOS por toma, no a cada retoque de un campo: lo que hay que salvar
+  // es el parte, y así Render no se despierta por cada toque de un stepper.
+  // El resto (producción, notas…) viaja en la subida al salir de la app.
+  const logNow = JSON.stringify(state.log || []);
+  if(_bkLogSnapshot === null){ _bkLogSnapshot = logNow; return; }
+  if(logNow === _bkLogSnapshot) return;
+  _bkLogSnapshot = logNow;
   clearTimeout(_bkTimer);
   _bkTimer = setTimeout(backupSync, 5000);
 }
@@ -3877,6 +3888,9 @@ async function backupSync(){
 
 function syncInit(){
   _syncSnapshot = JSON.stringify(collectSettings());
+  // Sin esto, la PRIMERA toma del día no dispararía subida (se gastaría en
+  // inicializar la foto) y se quedaría esperando a la segunda.
+  _bkLogSnapshot = JSON.stringify(state.log || []);
   if(typeof authValid === 'function' && authValid()) syncLogin();
   window.addEventListener('online', syncLogin);
   setInterval(()=>{ if(typeof authValid === 'function' && authValid()) syncPull(); }, 30*60*1000);
