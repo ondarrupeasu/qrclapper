@@ -101,7 +101,8 @@
      El rol es de ESTE aparato, no de la cuenta: los dos entran con el mismo
      usuario y cada uno elige el suyo. */
   body.role-script #card-camara,
-  body.role-script #card-ajustes{ display:none; }
+  body.role-script #card-ajustes,
+  body.role-script #field-qr-level{ display:none; }   /* la script no genera el QR */
   body.role-aux #card-flags{ display:none; }
   /* La script vive en las notas: sin los ajustes de cámara sobra sitio. */
   body.role-script #f-note{ min-height:150px; }
@@ -1047,7 +1048,7 @@ else authInit();
           <label class="lbl" data-i18n="notas_sesion">Notas de sesión</label>
           <textarea id="f-session-notes" class="note-input" rows="3" data-i18n-ph="notas_sesion_ph" placeholder="Notas generales de la sesión (decisiones, para la siguiente…)"></textarea>
         </div>
-        <div class="prod-field">
+        <div class="prod-field" id="field-qr-level">
           <label class="lbl" data-i18n="qr_nivel">Nivel del QR</label>
           <div class="seg-group" style="margin-bottom:0;">
             <div class="segmented" data-field="qrLevel">
