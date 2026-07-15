@@ -468,6 +468,39 @@
   </div>
 </div>
 
+<!-- Menú de cuenta: se abre desde el icono del header. Aquí va lo de la cuenta
+     (cambiar contraseña, salir) sin meter más iconos en la barra de arriba. -->
+<div id="acct-overlay" style="position:fixed; inset:0; z-index:100001; display:none;
+     align-items:center; justify-content:center; background:rgba(0,0,0,.72); padding:20px;">
+  <div style="width:100%; max-width:340px; background:#17181a; border:1px solid #2c2d30;
+       border-radius:14px; padding:20px;">
+    <div id="acct-name" style="font-weight:700; color:#f3f1ea; font-size:16px;"></div>
+    <div style="color:#9a9a96; font-size:12px; margin-top:2px;">Tu cuenta</div>
+
+    <div id="acct-menu" style="margin-top:18px;">
+      <button id="acct-changepass" style="width:100%; background:transparent; border:1px solid #2c2d30;
+        color:#f3f1ea; border-radius:10px; padding:12px; font-size:15px; cursor:pointer;">Cambiar contraseña</button>
+      <button id="acct-logout" style="width:100%; background:transparent; border:1px solid #2c2d30;
+        color:#9a9a96; border-radius:10px; padding:12px; font-size:15px; cursor:pointer; margin-top:8px;">Cerrar sesión</button>
+    </div>
+
+    <div id="acct-form" style="display:none; margin-top:18px;">
+      <input id="acct-cur" type="password" autocomplete="current-password" placeholder="Contraseña actual"
+        style="width:100%; background:#0f0f11; border:1px solid #2c2d30; color:#f3f1ea; border-radius:10px;
+               padding:12px 13px; font-size:16px; margin-bottom:8px;">
+      <input id="acct-new" type="password" autocomplete="new-password" placeholder="Contraseña nueva (mín. 6)"
+        style="width:100%; background:#0f0f11; border:1px solid #2c2d30; color:#f3f1ea; border-radius:10px;
+               padding:12px 13px; font-size:16px; margin-bottom:8px;">
+      <div id="acct-msg" style="min-height:18px; font-size:13px; margin-bottom:8px; text-align:center;"></div>
+      <button id="acct-save" style="width:100%; background:#ff4d2e; color:#fff; border:none; border-radius:10px;
+        padding:13px; font-weight:700; font-size:15px; cursor:pointer;">Guardar</button>
+    </div>
+
+    <button id="acct-close" style="width:100%; background:transparent; border:none; color:#9a9a96;
+      padding:12px; font-size:13px; cursor:pointer; margin-top:10px;">Cerrar</button>
+  </div>
+</div>
+
 <script>
 /* ================= Control de acceso (cuentas QRClappeR) =================
    La app es cliente offline: esto gestiona QUIÉN la usa (control "blando").
@@ -603,12 +636,72 @@ async function authHeartbeat(){
   }catch(e){ /* sin red: se reintenta luego */ }
 }
 
+/* ---- Menú de cuenta ---- */
+function acctShow(){
+  const a = authGet(); if(!a) return;
+  document.getElementById('acct-name').textContent = a.username || '';
+  acctMode('menu');
+  document.getElementById('acct-overlay').style.display = 'flex';
+}
+function acctHide(){ document.getElementById('acct-overlay').style.display = 'none'; }
+function acctMode(m){
+  document.getElementById('acct-menu').style.display = (m === 'menu') ? '' : 'none';
+  document.getElementById('acct-form').style.display = (m === 'pass') ? '' : 'none';
+  if(m === 'pass'){
+    document.getElementById('acct-cur').value = '';
+    document.getElementById('acct-new').value = '';
+    document.getElementById('acct-msg').textContent = '';
+  }
+}
+async function acctSavePass(){
+  const msg = document.getElementById('acct-msg');
+  const btn = document.getElementById('acct-save');
+  const cur = document.getElementById('acct-cur').value;
+  const neu = document.getElementById('acct-new').value;
+  if(neu.length < 6){ msg.style.color = '#ff4d2e'; msg.textContent = 'La nueva debe tener al menos 6 caracteres.'; return; }
+  if(!navigator.onLine){ msg.style.color = '#ff4d2e'; msg.textContent = 'Necesitas conexión para cambiar la contraseña.'; return; }
+  const a = authGet(); if(!a || !a.token) return;
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  // El servidor de Render duerme: el primer intento puede tardar.
+  const lento = setTimeout(()=>{ msg.style.color = '#9a9a96';
+    msg.textContent = 'Conectando… puede tardar hasta 1 minuto (el servidor se está despertando).'; }, 4000);
+  try{
+    const r = await fetch(API_BASE + '/api/change-password', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + a.token},
+      body: JSON.stringify({ current: cur, new: neu })
+    });
+    const d = await r.json().catch(()=>({}));
+    clearTimeout(lento);
+    if(r.ok && d.ok){
+      if(d.token) authSet({ token:d.token, username:a.username });
+      msg.style.color = '#2ecc71'; msg.textContent = 'Contraseña cambiada ✓';
+      setTimeout(acctHide, 1200);
+    } else {
+      msg.style.color = '#ff4d2e';
+      msg.textContent = d.error || 'No se pudo cambiar.';
+    }
+  }catch(e){
+    clearTimeout(lento);
+    msg.style.color = '#ff4d2e'; msg.textContent = 'Sin conexión con el servidor.';
+  }finally{
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+
 function authInit(){
   document.getElementById('auth-submit').addEventListener('click', authSubmit);
   document.getElementById('auth-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') authSubmit(); });
   document.getElementById('auth-toggle').addEventListener('click', e=>{ e.preventDefault(); authSetMode(authMode==='login'?'register':'login'); });
   const lo = document.getElementById('btn-logout');
-  if(lo) lo.addEventListener('click', ()=>{ if(confirm('¿Cerrar sesión?')) authLogout(); });
+  if(lo) lo.addEventListener('click', acctShow);
+  document.getElementById('acct-close').addEventListener('click', acctHide);
+  document.getElementById('acct-changepass').addEventListener('click', ()=> acctMode('pass'));
+  document.getElementById('acct-save').addEventListener('click', acctSavePass);
+  document.getElementById('acct-new').addEventListener('keydown', e=>{ if(e.key==='Enter') acctSavePass(); });
+  document.getElementById('acct-logout').addEventListener('click', ()=>{
+    if(confirm('¿Cerrar sesión?')){ acctHide(); authLogout(); }
+  });
   // Gate desactivado: app abierta como siempre. Excepción: abrir con ?login=1
   // fuerza la pantalla de login (para registrarte/probar antes de activarlo).
   const forceLogin = location.search.indexOf('login=1') !== -1;
@@ -638,7 +731,7 @@ else authInit();
            "QRClappeR" es igual en los tres idiomas y el usuario no se traduce. -->
       <h1 id="hdr-title">QRClappeR</h1>
       <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
-        <button id="btn-logout" class="icon-btn" title="Cerrar sesión" style="display:none">
+        <button id="btn-logout" class="icon-btn" title="Tu cuenta" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
