@@ -489,6 +489,13 @@
     <div style="color:#9a9a96; font-size:12px; margin-top:2px;">Tu cuenta</div>
 
     <div id="acct-menu" style="margin-top:18px;">
+      <div style="border:1px solid #2c2d30; border-radius:10px; padding:12px; margin-bottom:8px;">
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;">
+          <span style="color:#f3f1ea; font-size:15px;">Respaldo del parte</span>
+          <input id="acct-backup" type="checkbox" style="width:20px; height:20px; accent-color:#ff4d2e;">
+        </label>
+        <div id="acct-backup-note" style="color:#9a9a96; font-size:11px; margin-top:8px; line-height:1.45;"></div>
+      </div>
       <button id="acct-changepass" style="width:100%; background:transparent; border:1px solid #2c2d30;
         color:#f3f1ea; border-radius:10px; padding:12px; font-size:15px; cursor:pointer;">Cambiar contraseña</button>
       <button id="acct-logout" style="width:100%; background:transparent; border:1px solid #2c2d30;
@@ -654,8 +661,26 @@ async function authHeartbeat(){
 function acctShow(){
   const a = authGet(); if(!a) return;
   document.getElementById('acct-name').textContent = a.username || '';
+  acctRenderBackup();
   acctMode('menu');
   document.getElementById('acct-overlay').style.display = 'flex';
+}
+
+function acctRenderBackup(){
+  const cb = document.getElementById('acct-backup');
+  const note = document.getElementById('acct-backup-note');
+  if(!cb || typeof backupOn !== 'function') return;
+  cb.checked = backupOn();
+  if(!cb.checked){
+    note.innerHTML = 'Tus tomas se quedan solo en este dispositivo. Si lo activas, '
+      + 'podrás recuperarlas entrando con tu cuenta en otro equipo.';
+    return;
+  }
+  const at = parseInt(localStorage.getItem('qr_backup_at') || '0', 10);
+  const cuando = at ? new Date(at).toLocaleString() : 'aún no';
+  // Mientras no exista el cifrado hay que decirlo claro: son datos de rodaje.
+  note.innerHTML = '⚠️ Todavía SIN cifrar: tus tomas y datos de producción se guardan '
+    + 'en el servidor de forma legible.<br>Última copia: ' + cuando;
 }
 function acctHide(){ document.getElementById('acct-overlay').style.display = 'none'; }
 function acctMode(m){
@@ -711,6 +736,19 @@ function authInit(){
   if(lo) lo.addEventListener('click', acctShow);
   document.getElementById('acct-close').addEventListener('click', acctHide);
   document.getElementById('acct-changepass').addEventListener('click', ()=> acctMode('pass'));
+  document.getElementById('acct-backup').addEventListener('change', e=>{
+    if(e.target.checked){
+      const ok = confirm('¿Activar el respaldo del parte?\n\n'
+        + 'Tus tomas, notas y datos de producción se subirán a tu cuenta para que '
+        + 'puedas recuperarlos en otro dispositivo.\n\n'
+        + 'AVISO: todavía se guardan SIN cifrar en el servidor. El cifrado llegará '
+        + 'más adelante.');
+      if(!ok){ e.target.checked = false; return; }
+      backupSetOn(true); acctRenderBackup(); backupSync();
+    } else {
+      backupSetOn(false); acctRenderBackup();
+    }
+  });
   document.getElementById('acct-save').addEventListener('click', acctSavePass);
   document.getElementById('acct-new').addEventListener('keydown', e=>{ if(e.key==='Enter') acctSavePass(); });
   document.getElementById('acct-logout').addEventListener('click', ()=>{
@@ -3527,6 +3565,7 @@ function loadState(){
 function saveState(){
   localStorage.setItem('claquetaState', JSON.stringify(state));
   if(typeof syncTouch === 'function') syncTouch();
+  if(typeof backupTouch === 'function') backupTouch();
 }
 let state = loadState();
 if(!state.sessionDate){
@@ -3664,11 +3703,99 @@ function syncRepaint(){
   if(typeof renderLensList === 'function') renderLensList();
 }
 
+/* ================= RESPALDO DEL PARTE (opcional) =======================
+   Entras con tu cuenta en otro equipo y tienes tu parte como lo dejaste.
+
+   Aquí NO vale "gana el último": si el iPhone rueda sin cobertura y el iPad
+   rueda a la vez, el que suba el segundo borraría las tomas que nunca vio.
+   Por eso se FUSIONA (unión de tomas por su `ts`, que es único) igual que hace
+   "Importar → Añadir".
+
+   La fusión la hace el dispositivo, nunca el servidor: es lo único que seguirá
+   funcionando cuando el contenido vaya cifrado y el servidor no pueda leerlo.
+   El `rev` evita que dos dispositivos se pisen: subir exige la rev que bajaste.
+   ====================================================================== */
+const BK_ON = 'qr_backup_on';       // el usuario lo activa; por defecto NO
+const BK_REV = 'qr_backup_rev';     // rev del servidor que tenemos de base
+const BK_AT = 'qr_backup_at';       // cuándo se subió por última vez
+let _bkTimer = null, _bkBusy = false;
+
+function backupOn(){ return localStorage.getItem(BK_ON) === '1'; }
+function backupSetOn(v){ localStorage.setItem(BK_ON, v ? '1' : '0'); }
+function backupRev(){ return parseInt(localStorage.getItem(BK_REV) || '0', 10) || 0; }
+
+/* Une dos partes SIN perder tomas. Las tomas se acumulan (unión por `ts`); los
+   campos sueltos (en qué escena vas) sí se quedan con el más reciente, porque
+   ahí no hay nada que perder. */
+function mergeParte(local, remoto){
+  if(!remoto) return local;
+  const out = Object.assign({}, remoto, local);   // base: campos del más reciente abajo
+  const porTs = new Map();
+  (remoto.log || []).forEach(t => { if(t && t.ts != null) porTs.set(String(t.ts), t); });
+  (local.log  || []).forEach(t => { if(t && t.ts != null) porTs.set(String(t.ts), t); });
+  out.log = [...porTs.values()].sort((a,b) => (a.ts||0) - (b.ts||0));
+  return out;
+}
+
+/* Lo que se respalda: TODO el parte (esto sí incluye producción y notas). */
+function collectParte(){
+  const p = JSON.parse(JSON.stringify(state));
+  delete p.lastPayload; delete p.lastClapPayload;   // se regeneran solos
+  return p;
+}
+
+function backupTouch(){
+  if(!backupOn()) return;
+  clearTimeout(_bkTimer);
+  _bkTimer = setTimeout(backupSync, 5000);
+}
+
+async function backupSync(){
+  if(!backupOn() || _bkBusy || !navigator.onLine) return;
+  const a = (typeof authGet === 'function') ? authGet() : null;
+  if(!a || !a.token) return;
+  _bkBusy = true;
+  try{
+    for(let intento = 0; intento < 3; intento++){
+      // 1) bajar lo que hay 2) fusionar aquí 3) subir con la rev que bajamos
+      const g = await fetch(API_BASE + '/api/backup', {headers:{'Authorization':'Bearer ' + a.token}});
+      if(!g.ok) return;
+      const sv = await g.json();
+      let remoto = null;
+      try{ remoto = sv.data ? JSON.parse(sv.data) : null; }catch(e){ remoto = null; }
+      const fusion = mergeParte(collectParte(), remoto);
+      const r = await fetch(API_BASE + '/api/backup', {
+        method:'PUT',
+        headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + a.token},
+        body: JSON.stringify({ data: JSON.stringify(fusion), rev: sv.rev || 0 })
+      });
+      if(r.status === 409) continue;              // alguien subió: fusionar otra vez
+      if(!r.ok) return;
+      const d = await r.json();
+      localStorage.setItem(BK_REV, String(d.rev));
+      localStorage.setItem(BK_AT, String(d.updated_at || Date.now()));
+      // Traernos lo fusionado: si el otro dispositivo tenía tomas, ahora son nuestras.
+      if(JSON.stringify(fusion.log || []) !== JSON.stringify(state.log || [])){
+        state.log = fusion.log;
+        localStorage.setItem('claquetaState', JSON.stringify(state));
+        if(typeof renderLog === 'function') renderLog();
+      }
+      return;
+    }
+  }catch(e){ /* sin red: se reintenta */ }
+  finally{ _bkBusy = false; }
+}
+
 function syncInit(){
   _syncSnapshot = JSON.stringify(collectSettings());
-  if(typeof authValid === 'function' && authValid()) syncPull();
-  window.addEventListener('online', syncPull);
+  if(typeof authValid === 'function' && authValid()){ syncPull(); backupSync(); }
+  window.addEventListener('online', ()=>{ syncPull(); backupSync(); });
   setInterval(()=>{ if(typeof authValid === 'function' && authValid()) syncPull(); }, 30*60*1000);
+  // Al irte de la app (cerrarla, cambiar de app): última subida. Es cuando más
+  // falta hace y es el momento en que iOS congela la página.
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'hidden') backupSync();
+  });
 }
 
 /* ---- helpers de formato y steppers ---- */
