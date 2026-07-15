@@ -531,6 +531,29 @@ const AUTH_ENABLED = true;
 const AUTH_KEY = 'qr_auth';
 let authMode = 'login';   // 'login' | 'register'
 
+/* Identidad de ESTE aparato: para el tope de dispositivos por cuenta. Es un
+   número aleatorio, no identifica a nadie ni sale de aquí salvo al entrar. */
+const DEV_KEY = 'qr_device_id';
+function deviceId(){
+  let d = localStorage.getItem(DEV_KEY);
+  if(!d){
+    d = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : String(Date.now()) + Math.random().toString(36).slice(2);
+    localStorage.setItem(DEV_KEY, d);
+  }
+  return d;
+}
+/* Nombre reconocible para que Alex sepa cuál echar desde el panel. */
+function deviceName(){
+  const u = navigator.userAgent || '';
+  if(/iPad/.test(u)) return 'iPad';
+  if(/iPhone/.test(u)) return 'iPhone';
+  if(/Android/.test(u)) return 'Android';
+  if(/Macintosh/.test(u)) return 'Mac';
+  if(/Windows/.test(u)) return 'Windows';
+  return 'Navegador';
+}
+
 function authGet(){ try{ return JSON.parse(localStorage.getItem(AUTH_KEY)); }catch(e){ return null; } }
 function authSet(a){ localStorage.setItem(AUTH_KEY, JSON.stringify(a)); }
 function authClear(){ localStorage.removeItem(AUTH_KEY); }
@@ -603,7 +626,8 @@ async function authSubmit(){
     const path = authMode === 'login' ? '/api/login' : '/api/register';
     const r = await fetch(API_BASE + path, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ username:user, password:pass })
+      body: JSON.stringify({ username:user, password:pass,
+                             device_id: deviceId(), device_name: deviceName() })
     });
     const d = await r.json().catch(()=>({}));
     if(authMode === 'register'){
@@ -620,6 +644,15 @@ async function authSubmit(){
         document.getElementById('auth-pass').value = '';
         msg.textContent = '';        // que no quede el aviso de "conectando…" pegado
         authHide();
+      }else if(d.too_many){
+        // Un "no" a secas dejaría al usuario tirado sin saber qué hacer: le
+        // decimos desde dónde se está usando y cuál es la salida.
+        const lista = (d.devices || []).map(x => '· ' + x.name).join('\n');
+        msg.style.color = '#ff4d2e';
+        msg.textContent = 'Esta cuenta ya se usa en ' + (d.limit || 3) + ' dispositivos.';
+        alert('Esta cuenta ya está en uso en ' + (d.limit || 3) + ' dispositivos:\n\n' + lista
+          + '\n\nSi has cambiado de móvil o has perdido uno, pide al administrador '
+          + 'que libere tus dispositivos y vuelve a entrar.');
       }else{
         msg.textContent = d.error || 'No se pudo iniciar sesión.';
       }
