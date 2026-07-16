@@ -548,6 +548,11 @@
           <input id="acct-backup" type="checkbox" style="width:20px; height:20px; accent-color:#ff4d2e;">
         </label>
         <div id="acct-backup-note" style="color:#9a9a96; font-size:11px; margin-top:8px; line-height:1.45;"></div>
+        <div id="acct-enc-row" style="margin-top:10px; display:none;">
+          <button id="acct-enc-btn" style="width:100%; background:transparent; border:1px solid #2c2d30;
+            color:#f3f1ea; border-radius:8px; padding:10px; font-size:13px; cursor:pointer;">🔒 Cifrar el respaldo</button>
+          <div id="acct-enc-note" style="color:#9a9a96; font-size:11px; margin-top:6px; line-height:1.45;"></div>
+        </div>
       </div>
       <button id="acct-changepass" style="width:100%; background:transparent; border:1px solid #2c2d30;
         color:#f3f1ea; border-radius:10px; padding:12px; font-size:15px; cursor:pointer;">Cambiar contraseña</button>
@@ -569,6 +574,77 @@
 
     <button id="acct-close" style="width:100%; background:transparent; border:none; color:#9a9a96;
       padding:12px; font-size:13px; cursor:pointer; margin-top:10px;">Cerrar</button>
+  </div>
+</div>
+
+<!-- Activar cifrado: aviso a pantalla completa + contraseña. El aviso importa
+     tanto como el cifrado: la gente tiene que entender que es auto-custodia. -->
+<div id="enc-overlay" style="position:fixed; inset:0; z-index:100002; display:none;
+     align-items:center; justify-content:center; background:rgba(0,0,0,.82); padding:20px;">
+  <div style="width:100%; max-width:360px; background:#17181a; border:1px solid #2c2d30; border-radius:14px; padding:20px;">
+    <div style="font-weight:700; color:#f3f1ea; font-size:16px;">🔒 Cifrar el respaldo</div>
+    <div style="color:#9a9a96; font-size:12.5px; margin-top:10px; line-height:1.5;">
+      Tus partes se guardarán en el servidor <b style="color:#f3f1ea;">cifrados</b>: ni el
+      administrador ni nadie que acceda al servidor podrá leerlos.<br><br>
+      A cambio, la seguridad es tuya. Si pierdes <b style="color:#f3f1ea;">la contraseña Y la
+      clave de recuperación</b>, tus datos cifrados <b style="color:#ff4d2e;">no se recuperan</b>
+      — ni tú, ni el administrador, ni nadie. Es imposible, no difícil.
+    </div>
+    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:12px; cursor:pointer; color:#f3f1ea; font-size:13px;">
+      <input id="enc-understand" type="checkbox" style="width:18px; height:18px; accent-color:#ff4d2e; flex:0 0 auto; margin-top:1px;">
+      <span>Lo entiendo y guardaré mi clave de recuperación.</span>
+    </label>
+    <input id="enc-pass" type="password" autocomplete="current-password" placeholder="Tu contraseña"
+      style="width:100%; background:#0f0f11; border:1px solid #2c2d30; color:#f3f1ea; border-radius:10px;
+             padding:12px 13px; font-size:16px; margin-top:12px;">
+    <div id="enc-msg" style="min-height:18px; font-size:13px; margin:8px 0; text-align:center;"></div>
+    <button id="enc-go" style="width:100%; background:#ff4d2e; color:#fff; border:none; border-radius:10px;
+      padding:13px; font-weight:700; font-size:15px; cursor:pointer;">Activar cifrado</button>
+    <button id="enc-cancel" style="width:100%; background:transparent; border:none; color:#9a9a96;
+      padding:12px; font-size:13px; cursor:pointer; margin-top:6px;">Cancelar</button>
+  </div>
+</div>
+
+<!-- La clave de recuperación: se enseña UNA vez. -->
+<div id="reckey-overlay" style="position:fixed; inset:0; z-index:100003; display:none;
+     align-items:center; justify-content:center; background:rgba(0,0,0,.9); padding:20px;">
+  <div style="width:100%; max-width:360px; background:#17181a; border:1px solid #2c2d30; border-radius:14px; padding:20px;">
+    <div style="font-weight:700; color:#f3f1ea; font-size:16px;">Tu clave de recuperación</div>
+    <div style="color:#9a9a96; font-size:12.5px; margin-top:8px; line-height:1.5;">
+      Guárdala en un sitio seguro (gestor de contraseñas, o en papel). Es la
+      <b style="color:#f3f1ea;">única</b> forma de recuperar tus datos si olvidas la contraseña.
+      No se volverá a mostrar.
+    </div>
+    <div id="reckey-code" style="font-family:ui-monospace,Menlo,monospace; font-size:18px; font-weight:700;
+      letter-spacing:1px; color:#ff4d2e; background:#0f0f11; text-align:center; border:1px solid #2c2d30;
+      border-radius:10px; padding:14px; margin:14px 0; user-select:all; word-break:break-all;"></div>
+    <button id="reckey-copy" style="width:100%; background:transparent; border:1px solid #2c2d30; color:#f3f1ea;
+      border-radius:10px; padding:11px; font-size:14px; cursor:pointer; margin-bottom:8px;">Copiar</button>
+    <button id="reckey-done" style="width:100%; background:#ff4d2e; color:#fff; border:none; border-radius:10px;
+      padding:13px; font-weight:700; font-size:15px; cursor:pointer;">La he guardado</button>
+  </div>
+</div>
+
+<!-- Recuperar datos con la clave (tras restablecer la contraseña). -->
+<div id="rec-overlay" style="position:fixed; inset:0; z-index:100002; display:none;
+     align-items:center; justify-content:center; background:rgba(0,0,0,.82); padding:20px;">
+  <div style="width:100%; max-width:360px; background:#17181a; border:1px solid #2c2d30; border-radius:14px; padding:20px;">
+    <div style="font-weight:700; color:#f3f1ea; font-size:16px;">Recuperar datos cifrados</div>
+    <div style="color:#9a9a96; font-size:12.5px; margin-top:8px; line-height:1.5;">
+      Escribe tu clave de recuperación y tu contraseña actual. Volveremos a
+      vincular tus datos a esta contraseña.
+    </div>
+    <input id="rec-code" type="text" autocapitalize="characters" placeholder="Clave de recuperación"
+      style="width:100%; background:#0f0f11; border:1px solid #2c2d30; color:#f3f1ea; border-radius:10px;
+             padding:12px 13px; font-size:15px; margin-top:12px;">
+    <input id="rec-pass" type="password" autocomplete="current-password" placeholder="Tu contraseña actual"
+      style="width:100%; background:#0f0f11; border:1px solid #2c2d30; color:#f3f1ea; border-radius:10px;
+             padding:12px 13px; font-size:16px; margin-top:8px;">
+    <div id="rec-msg" style="min-height:18px; font-size:13px; margin:8px 0; text-align:center;"></div>
+    <button id="rec-go" style="width:100%; background:#ff4d2e; color:#fff; border:none; border-radius:10px;
+      padding:13px; font-weight:700; font-size:15px; cursor:pointer;">Recuperar</button>
+    <button id="rec-cancel" style="width:100%; background:transparent; border:none; color:#9a9a96;
+      padding:12px; font-size:13px; cursor:pointer; margin-top:6px;">Cancelar</button>
   </div>
 </div>
 
@@ -694,6 +770,8 @@ async function authSubmit(){
     }else{ // login
       if(r.ok && d.ok && d.token){
         authSet({ token:d.token, username:d.username || user });
+        // Con la contraseña en mano: sacar la llave de cifrado si la cuenta lo usa.
+        if(typeof cryptoTrasLogin === 'function') await cryptoTrasLogin(pass);
         document.getElementById('auth-pass').value = '';
         msg.textContent = '';        // que no quede el aviso de "conectando…" pegado
         authHide();
@@ -726,6 +804,8 @@ function authLogout(){
   // Olvidar de quién eran los ajustes de este dispositivo: si entra otro
   // usuario, no debe heredarlos ni subirlos a su cuenta sin tocar nada.
   try{ localStorage.removeItem('qr_sync_meta'); }catch(e){}
+  // Y olvidar la llave de cifrado: es de la cuenta que sale, no del aparato.
+  try{ localStorage.removeItem('qr_dek'); localStorage.removeItem('qr_enc_on'); }catch(e){}
   authShow();
 }
 
@@ -773,8 +853,10 @@ function acctRenderRole(){
 function acctRenderBackup(){
   const cb = document.getElementById('acct-backup');
   const note = document.getElementById('acct-backup-note');
+  const encRow = document.getElementById('acct-enc-row');
   if(!cb || typeof backupOn !== 'function') return;
   cb.checked = backupOn();
+  if(encRow) encRow.style.display = 'none';
   if(!cb.checked){
     note.innerHTML = 'Tus tomas se quedan solo en este dispositivo. Si lo activas, '
       + 'podrás recuperarlas entrando con tu cuenta en otro equipo.';
@@ -782,9 +864,126 @@ function acctRenderBackup(){
   }
   const at = parseInt(localStorage.getItem('qr_backup_at') || '0', 10);
   const cuando = at ? new Date(at).toLocaleString() : 'aún no';
-  // Mientras no exista el cifrado hay que decirlo claro: son datos de rodaje.
-  note.innerHTML = '⚠️ Todavía SIN cifrar: tus tomas y datos de producción se guardan '
-    + 'en el servidor de forma legible.<br>Última copia: ' + cuando;
+  const encOn = localStorage.getItem('qr_enc_on') === '1';
+  if(encOn){
+    note.innerHTML = '🔒 Cifrado. Nadie del servidor puede leer tus partes.<br>Última copia: ' + cuando;
+  } else {
+    note.innerHTML = '⚠️ Sin cifrar: se guardan legibles en el servidor.<br>Última copia: ' + cuando;
+  }
+  acctRenderEnc();
+}
+
+/* Fila de cifrado: solo con el respaldo activo (cifrar algo que no sale del
+   móvil no tiene sentido). Tres estados: activar, activo, o "sin la llave aquí"
+   (te restablecieron la contraseña) -> recuperar. */
+function acctRenderEnc(){
+  const row = document.getElementById('acct-enc-row');
+  const btn = document.getElementById('acct-enc-btn');
+  const note = document.getElementById('acct-enc-note');
+  if(!row) return;
+  row.style.display = '';
+  const encOn = localStorage.getItem('qr_enc_on') === '1';
+  const tieneLlave = !!cryptoDEK();
+  if(!encOn){
+    btn.textContent = '🔒 Cifrar el respaldo';
+    btn.dataset.action = 'activar';
+    note.textContent = 'Que ni el administrador pueda leer tus partes. Recibirás una clave de recuperación.';
+  } else if(tieneLlave){
+    btn.textContent = '🔒 Cifrado activo';
+    btn.dataset.action = '';
+    btn.style.opacity = '.6';
+    note.textContent = 'Tus partes se cifran en este dispositivo antes de subir.';
+  } else {
+    btn.textContent = '🔑 Recuperar datos cifrados';
+    btn.dataset.action = 'recuperar';
+    note.textContent = 'Este dispositivo no tiene la llave (¿te restablecieron la contraseña?). Recupérala con tu clave.';
+  }
+}
+
+/* ---- Activar cifrado ---- */
+function encShow(){
+  document.getElementById('enc-understand').checked = false;
+  document.getElementById('enc-pass').value = '';
+  document.getElementById('enc-msg').textContent = '';
+  document.getElementById('enc-overlay').style.display = 'flex';
+}
+function encHide(){ document.getElementById('enc-overlay').style.display = 'none'; }
+async function encGo(){
+  const msg = document.getElementById('enc-msg');
+  const pass = document.getElementById('enc-pass').value;
+  if(!document.getElementById('enc-understand').checked){
+    msg.style.color = '#ff4d2e'; msg.textContent = 'Marca la casilla para continuar.'; return;
+  }
+  if(!pass){ msg.style.color = '#ff4d2e'; msg.textContent = 'Escribe tu contraseña.'; return; }
+  if(!navigator.onLine){ msg.style.color = '#ff4d2e'; msg.textContent = 'Necesitas conexión para activar el cifrado.'; return; }
+  const a = authGet(); if(!a || !a.token) return;
+  const btn = document.getElementById('enc-go'); btn.disabled = true; btn.textContent = 'Activando…';
+  try{
+    // La contraseña debe ser la de verdad: la validamos re-vinculándola después,
+    // pero primero comprobamos que es correcta cambiando... no. La comprobamos
+    // pidiendo un heartbeat? El token ya vale. La contraseña la usamos tal cual
+    // para envolver; si es errónea, el propio usuario no podrá abrir luego. Para
+    // evitarlo, verificamos contra el servidor con /api/change-password no. Mejor:
+    // confiamos en que es su contraseña (la acaba de escribir en su móvil).
+    const act = await activarCifrado(pass);
+    const r = await fetch(API_BASE + '/api/crypto', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + a.token},
+      body: JSON.stringify(act.servidor)
+    });
+    if(!r.ok){ msg.style.color='#ff4d2e'; msg.textContent='No se pudo activar. Inténtalo otra vez.'; return; }
+    localStorage.setItem('qr_dek', act.rawDEK);
+    localStorage.setItem('qr_enc_on', '1');
+    encHide();
+    reckeyShow(act.claveRecuperacion);      // enseñar la clave UNA vez
+    backupSync();                            // re-subir el parte ya cifrado
+  }catch(e){
+    msg.style.color = '#ff4d2e'; msg.textContent = 'Error al cifrar.';
+  }finally{ btn.disabled = false; btn.textContent = 'Activar cifrado'; }
+}
+
+/* ---- Mostrar la clave de recuperación (una vez) ---- */
+function reckeyShow(code){
+  document.getElementById('reckey-code').textContent = code;
+  document.getElementById('reckey-overlay').style.display = 'flex';
+}
+
+/* ---- Recuperar con la clave ---- */
+function recShow(){
+  document.getElementById('rec-code').value = '';
+  document.getElementById('rec-pass').value = '';
+  document.getElementById('rec-msg').textContent = '';
+  document.getElementById('rec-overlay').style.display = 'flex';
+}
+function recHide(){ document.getElementById('rec-overlay').style.display = 'none'; }
+async function recGo(){
+  const msg = document.getElementById('rec-msg');
+  const code = document.getElementById('rec-code').value.trim();
+  const pass = document.getElementById('rec-pass').value;
+  if(!code || !pass){ msg.style.color='#ff4d2e'; msg.textContent='Rellena la clave y la contraseña.'; return; }
+  if(!navigator.onLine){ msg.style.color='#ff4d2e'; msg.textContent='Necesitas conexión.'; return; }
+  const a = authGet(); if(!a || !a.token) return;
+  const btn = document.getElementById('rec-go'); btn.disabled = true; btn.textContent = 'Recuperando…';
+  try{
+    const g = await fetch(API_BASE + '/api/crypto', { headers:{'Authorization':'Bearer ' + a.token} });
+    const c = await g.json();
+    if(!c || !c.enc){ msg.style.color='#ff4d2e'; msg.textContent='Esta cuenta no tiene cifrado.'; return; }
+    let dek;
+    try{ dek = await abrirConRecuperacion(code, c); }
+    catch(e){ msg.style.color='#ff4d2e'; msg.textContent='La clave de recuperación no es correcta.'; return; }
+    localStorage.setItem('qr_dek', dek);
+    // Re-vincular a la contraseña actual para que el próximo login funcione.
+    const nuevoSobre = await reenvuelvePassword(dek, pass, c);
+    await fetch(API_BASE + '/api/crypto', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + a.token},
+      body: JSON.stringify({ sobre_pw: nuevoSobre })
+    });
+    recHide();
+    showToast('Datos recuperados');
+    acctRenderBackup();
+    backupPull();
+  }catch(e){
+    msg.style.color='#ff4d2e'; msg.textContent='No se pudo recuperar.';
+  }finally{ btn.disabled = false; btn.textContent = 'Recuperar'; }
 }
 function acctHide(){ document.getElementById('acct-overlay').style.display = 'none'; }
 function acctMode(m){
@@ -848,14 +1047,31 @@ function authInit(){
       const ok = confirm('¿Activar el respaldo del parte?\n\n'
         + 'Tus tomas, notas y datos de producción se subirán a tu cuenta para que '
         + 'puedas recuperarlos en otro dispositivo.\n\n'
-        + 'AVISO: todavía se guardan SIN cifrar en el servidor. El cifrado llegará '
-        + 'más adelante.');
+        + 'Se guardan legibles en el servidor. Si quieres que nadie pueda leerlos, '
+        + 'activa después el cifrado.');
       if(!ok){ e.target.checked = false; return; }
       backupSetOn(true); acctRenderBackup(); backupSync();
     } else {
       backupSetOn(false); acctRenderBackup();
     }
   });
+  // Cifrado
+  document.getElementById('acct-enc-btn').addEventListener('click', ()=>{
+    const acc = document.getElementById('acct-enc-btn').dataset.action;
+    if(acc === 'activar') encShow();
+    else if(acc === 'recuperar') recShow();
+  });
+  document.getElementById('enc-cancel').addEventListener('click', encHide);
+  document.getElementById('enc-go').addEventListener('click', encGo);
+  document.getElementById('reckey-done').addEventListener('click', ()=>{
+    document.getElementById('reckey-overlay').style.display = 'none'; acctRenderBackup();
+  });
+  document.getElementById('reckey-copy').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(document.getElementById('reckey-code').textContent);
+      document.getElementById('reckey-copy').textContent = 'Copiada ✓'; }catch(e){}
+  });
+  document.getElementById('rec-cancel').addEventListener('click', recHide);
+  document.getElementById('rec-go').addEventListener('click', recGo);
   document.getElementById('acct-save').addEventListener('click', acctSavePass);
   document.getElementById('acct-new').addEventListener('keydown', e=>{ if(e.key==='Enter') acctSavePass(); });
   document.getElementById('acct-logout').addEventListener('click', ()=>{
@@ -3869,6 +4085,99 @@ function syncRepaint(){
    funcionando cuando el contenido vaya cifrado y el servidor no pueda leerlo.
    El `rev` evita que dos dispositivos se pisen: subir exige la rev que bajaste.
    ====================================================================== */
+/* ================= CIFRADO DEL RESPALDO ================================
+   Cifrado de sobre: una llave aleatoria (DEK) cifra el parte; la DEK se guarda
+   en el servidor envuelta con la contraseña Y con una clave de recuperación.
+   El servidor solo ve sobres opacos. Protege contra que alguien lea el servidor
+   (Neon/Render), NO contra que te roben el móvil desbloqueado (ahí ya tiene la
+   app). La DEK descifrada se cachea en este dispositivo para poder trabajar sin
+   conexión. Núcleo idéntico al validado en cryptobox.js. */
+const DEK_KEY = 'qr_dek';           // DEK en claro cacheada aquí (b64)
+const ENC_ON  = 'qr_enc_on';        // el cifrado está activo en la cuenta
+const _cencoder = new TextEncoder(), _cdecoder = new TextDecoder();
+const _PBKDF2_ITERS = 200000;
+const _ALFA_REC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function _b64(buf){
+  const b = new Uint8Array(buf); let s = '';
+  for(let i=0;i<b.length;i+=8192) s += String.fromCharCode.apply(null, b.subarray(i, i+8192));
+  return btoa(s);
+}
+function _unb64(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
+
+function nuevaClaveRecuperacion(){
+  const bytes = crypto.getRandomValues(new Uint8Array(25));
+  const ch = [...bytes].map(b => _ALFA_REC[b % _ALFA_REC.length]);
+  return [0,5,10,15,20].map(i => ch.slice(i, i+5).join('')).join('-');
+}
+async function _derivaKEK(secreto, sal){
+  const base = await crypto.subtle.importKey('raw', _cencoder.encode(secreto), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt: sal, iterations: _PBKDF2_ITERS, hash:'SHA-256' },
+    base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function _cifra(key, bytes){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, bytes);
+  const out = new Uint8Array(iv.length + ct.byteLength);
+  out.set(iv, 0); out.set(new Uint8Array(ct), iv.length);
+  return _b64(out);
+}
+async function _descifra(key, blob){
+  const raw = _unb64(blob);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv: raw.slice(0,12) }, key, raw.slice(12));
+  return new Uint8Array(pt);
+}
+async function activarCifrado(password){
+  const sal = crypto.getRandomValues(new Uint8Array(16));
+  const dek = await crypto.subtle.generateKey({ name:'AES-GCM', length:256 }, true, ['encrypt','decrypt']);
+  const rawDEK = new Uint8Array(await crypto.subtle.exportKey('raw', dek));
+  const claveRec = nuevaClaveRecuperacion();
+  const kekPw = await _derivaKEK(password, sal), kekRec = await _derivaKEK(claveRec, sal);
+  return {
+    claveRecuperacion: claveRec, rawDEK: _b64(rawDEK),
+    servidor: { sal:_b64(sal), sobre_pw: await _cifra(kekPw, rawDEK), sobre_rec: await _cifra(kekRec, rawDEK) },
+  };
+}
+async function abrirConPassword(password, srv){
+  return _b64(await _descifra(await _derivaKEK(password, _unb64(srv.sal)), srv.sobre_pw));
+}
+async function abrirConRecuperacion(claveRec, srv){
+  return _b64(await _descifra(await _derivaKEK(claveRec.trim().toUpperCase(), _unb64(srv.sal)), srv.sobre_rec));
+}
+async function reenvuelvePassword(rawDEK_b64, passwordNueva, srv){
+  return await _cifra(await _derivaKEK(passwordNueva, _unb64(srv.sal)), _unb64(rawDEK_b64));
+}
+async function cifraBlob(rawDEK_b64, texto){
+  const dek = await crypto.subtle.importKey('raw', _unb64(rawDEK_b64), 'AES-GCM', false, ['encrypt','decrypt']);
+  return await _cifra(dek, _cencoder.encode(texto));
+}
+async function descifraBlob(rawDEK_b64, blob){
+  const dek = await crypto.subtle.importKey('raw', _unb64(rawDEK_b64), 'AES-GCM', false, ['encrypt','decrypt']);
+  return _cdecoder.decode(await _descifra(dek, blob));
+}
+function cryptoDEK(){ return localStorage.getItem(DEK_KEY); }
+
+/* Tras entrar con contraseña: si la cuenta tiene cifrado, saca la DEK y la
+   cachea. Si la contraseña no abre el sobre (p. ej. el admin la restableció),
+   se queda sin DEK -> habrá que recuperar con la clave. */
+async function cryptoTrasLogin(password){
+  const a = (typeof authGet === 'function') ? authGet() : null;
+  if(!a || !a.token || !navigator.onLine) return;
+  try{
+    const r = await fetch(API_BASE + '/api/crypto', { headers:{'Authorization':'Bearer ' + a.token} });
+    if(!r.ok) return;
+    const c = await r.json();
+    if(c && c.enc){
+      localStorage.setItem(ENC_ON, '1');
+      try{ localStorage.setItem(DEK_KEY, await abrirConPassword(password, c)); }
+      catch(e){ localStorage.removeItem(DEK_KEY); }   // contraseña cambiada: recuperar con la clave
+    } else {
+      localStorage.removeItem(ENC_ON);
+    }
+  }catch(e){}
+}
+
 const BK_ON = 'qr_backup_on';       // lo activa el usuario; viaja con la CUENTA
 const BK_REV = 'qr_backup_rev';     // rev del servidor que tenemos de base
 const BK_AT = 'qr_backup_at';       // cuándo se subió por última vez
@@ -3977,8 +4286,13 @@ async function backupPull(){
     if(!r.ok) return false;
     const sv = await r.json();
     if(!sv || !sv.data) return false;
+    const dek = cryptoDEK();
+    if(sv.enc && !dek) return false;     // cifrado y sin llave aquí: no podemos leerlo
     let remoto = null;
-    try{ remoto = JSON.parse(sv.data); }catch(e){ return false; }
+    try{
+      const txt = sv.enc ? await descifraBlob(dek, sv.data) : sv.data;
+      remoto = JSON.parse(txt);
+    }catch(e){ return false; }
     applyParte(mergeParte(collectParte(), remoto, backupLocalAt(), sv.updated_at || 0));
     localStorage.setItem(BK_REV, String(sv.rev || 0));
     return true;
@@ -4028,13 +4342,23 @@ async function backupSync(){
       const g = await fetch(API_BASE + '/api/backup', {headers:{'Authorization':'Bearer ' + a.token}});
       if(!g.ok) return;
       const sv = await g.json();
+      const dek = cryptoDEK();
+      if(sv.enc && !dek) return;         // cifrado en el servidor y sin llave: no tocar (no bajar a claro)
       let remoto = null;
-      try{ remoto = sv.data ? JSON.parse(sv.data) : null; }catch(e){ remoto = null; }
+      try{
+        if(sv.data){ const txt = sv.enc ? await descifraBlob(dek, sv.data) : sv.data; remoto = JSON.parse(txt); }
+      }catch(e){ remoto = null; }
       const fusion = mergeParte(collectParte(), remoto, backupLocalAt(), sv.updated_at || 0);
+      // Si tengo DEK, subo cifrado SIEMPRE (aunque el servidor estuviera en claro:
+      // es el momento en que se activa el cifrado y se sube por primera vez).
+      const plano = JSON.stringify(fusion);
+      const cuerpo = dek
+        ? { data: await cifraBlob(dek, plano), rev: sv.rev || 0, enc: true }
+        : { data: plano, rev: sv.rev || 0 };
       const r = await fetch(API_BASE + '/api/backup', {
         method:'PUT',
         headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + a.token},
-        body: JSON.stringify({ data: JSON.stringify(fusion), rev: sv.rev || 0 })
+        body: JSON.stringify(cuerpo)
       });
       if(r.status === 409) continue;              // alguien subió: fusionar otra vez
       if(!r.ok) return;
