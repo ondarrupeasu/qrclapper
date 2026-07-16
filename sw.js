@@ -7,7 +7,7 @@
    - Resto de recursos: cache primero, red de reserva.
    Para forzar que todos actualicen tras un cambio, sube el número de CACHE. */
 
-const CACHE = 'qrclapper-v28';
+const CACHE = 'qrclapper-v29';
 const SHELL = [
   './',
   'index.html',

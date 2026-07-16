@@ -107,12 +107,15 @@
      que ella apunta en su ficha y es el nexo con el que se casan las dos
      fichas luego. Sin cámara no hay ni llave para fusionar. */
   body.role-script #card-ajustes,
-  body.role-script #field-qr-level,
   body.role-script #btn-calibrate{ display:none; }
   /* INT/EXT y DÍA/NOCHE los lleva la script; la valoración también (se la da el
-     director). El auxiliar está cambiando ópticas cuando eso se decide. */
+     director). El auxiliar está cambiando ópticas cuando eso se decide.
+     La producción también es de la script: al auxiliar no le mostramos esos
+     campos, porque al empezar están vacíos (los rellena ella en su aparato) y
+     verían una foto falsa de la sesión. */
   body.role-aux #card-flags,
-  body.role-aux #grp-escena-tipo{ display:none; }
+  body.role-aux #grp-escena-tipo,
+  body.role-aux #card-produccion{ display:none; }
   /* La script vive en las notas: sin los ajustes de cámara sobra sitio. */
   body.role-script #f-note{ min-height:150px; }
   body.role-script .take-tag-row{ margin-bottom:10px; }
@@ -1082,16 +1085,6 @@ else authInit();
         <div class="prod-field">
           <label class="lbl" data-i18n="notas_sesion">Notas de sesión</label>
           <textarea id="f-session-notes" class="note-input" rows="3" data-i18n-ph="notas_sesion_ph" placeholder="Notas generales de la sesión (decisiones, para la siguiente…)"></textarea>
-        </div>
-        <div class="prod-field" id="field-qr-level">
-          <label class="lbl" data-i18n="qr_nivel">Nivel del QR</label>
-          <div class="seg-group" style="margin-bottom:0;">
-            <div class="segmented" data-field="qrLevel">
-              <button data-value="basico" data-i18n="qr_basico">Básico</button>
-              <button data-value="completo" data-i18n="qr_completo">Completo</button>
-            </div>
-          </div>
-          <div class="qr-level-hint" id="qr-level-hint"></div>
         </div>
       </div>
     </div>
@@ -3732,7 +3725,7 @@ if(!state.sessionDate){
    para el parte NO lo sería, por eso el parte no se sincroniza).
    ====================================================================== */
 const SYNC_KEYS = ['lenses','camNames','clipFormats','cams','fps','lensType',
-                   'squeeze','apMode','shtMode','qrLevel','autoAdvance',
+                   'squeeze','apMode','shtMode','autoAdvance',
                    'negativeData','lang'];
 const SYNC_META = 'qr_sync_meta';
 const SYNC_BT_KEY = 'claptag_bt_latency_ms';
@@ -4356,14 +4349,6 @@ function renderEdit(){
 
   setSegmented('goodTag', state.goodTag);
 
-  setSegmented('qrLevel', state.qrLevel || 'basico');
-  const qh = document.getElementById('qr-level-hint');
-  if(qh){
-    qh.innerHTML = '';
-    const d1 = document.createElement('div'); d1.textContent = t('qr_hint_basico');
-    const d2 = document.createElement('div'); d2.className = 'qr-hint-foot'; d2.textContent = t('qr_hint_extra');
-    qh.appendChild(d1); qh.appendChild(d2);
-  }
   document.getElementById('f-pr').value = state.pr || '';
   document.getElementById('f-dir').value = state.dir || '';
   document.getElementById('f-dp').value = state.dp || '';
@@ -4903,7 +4888,9 @@ function buildFlashPayload(){
     good: state.pendingGood || ''   // relay: clave de la última toma marcada buena (Desktop la cruza)
   };
   if(cams.length > 1){ p.cams = cams; p.clips = clipMap(); }   // multicámara: nombres por cámara
-  if(state.qrLevel === 'completo') Object.assign(p, _qrTechnical());
+  // El QR de claqueta va SIEMPRE en básico (identidad + sincronía): así se lee
+  // seguro del metraje. Lo técnico viaja completo en el QR de PUBLICAR y en el
+  // CSV, que no tienen ese problema de densidad. (Se quitó el nivel "completo".)
   return p;
 }
 
@@ -6197,14 +6184,8 @@ function roleApply(){
   // La script no claca: su botón registra la toma y avanza.
   const btn = document.getElementById('btn-publicar');
   if(btn) btn.textContent = (r === 'script') ? 'SIGUIENTE' : t('publicar');
-  // La producción la lleva la SCRIPT (lo supervisa todo). El auxiliar la ve
-  // como contexto pero no la edita: así no la rellena a medias y, sobre todo,
-  // su copia vacía no compite con la de ella al fusionar.
-  const soloScript = (r === 'aux');
-  ['f-pr','f-dir','f-dp','f-session-notes'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.readOnly = soloScript;
-  });
+  // La producción es de la SCRIPT: al auxiliar se le oculta la tarjeta entera
+  // (regla CSS), así que aquí no hay nada más que hacer.
 }
 
 /* Cada nota técnica se vacía cuando deja de valer, para que un filtro que ya no
